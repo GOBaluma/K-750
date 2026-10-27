@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-750 Configurator</title>
+<style>
+  :root { --bg: #f3f3f3; --accent: #1976d2; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; background: var(--bg); }
+  #viewer { width: 100%; height: 100%; }
+  #loading {
+    position: absolute; inset: 0; z-index: 999; display: flex; align-items: center;
+    justify-content: center; background: var(--bg); font-size: 24px; text-align: center; padding: 20px;
+  }
+  #loading.error { color: #b3261e; }
+
+  #panel {
+    position: absolute; top: 20px; left: 20px; z-index: 1000; box-sizing: border-box;
+    width: min(520px, calc(100vw - 40px)); max-height: calc(100vh - 40px); overflow: auto;
+    background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 0, 0, .2);
+  }
+  #panel summary { font-size: 1.3em; font-weight: bold; cursor: pointer; }
+  #panel h3 { margin: 14px 0 8px; }
+
+  button { font: inherit; padding: 0; background: none; cursor: pointer; }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .color { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 60px; border: 0; }
+  .color .dot { width: 35px; height: 35px; border-radius: 50%; border: 2px solid #999; }
+  .color .name { font-size: 11px; text-align: center; }
+  .color.selected .dot { border-color: var(--accent); box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent); }
+  .color.selected .name { font-weight: bold; }
+
+  .fabric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .fabric-swatch { border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; transition: .2s; }
+  .fabric-swatch:hover { border-color: var(--accent); }
+  .fabric-swatch.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(25, 118, 210, .25); }
+  .fabric-swatch img { width: 100%; aspect-ratio: 1 / 1; height: auto; display: block; object-fit: cover; }
+  .fabric-swatch span { display: block; text-align: center; font-size: 11px; padding: 4px; }
+</style>
+</head>
+<body>
+<div id="loading" role="status">Loading K-750…</div>
+
+<details id="panel" open>
+  <summary>K-750 Chair</summary>
+  <h3>Frame color</h3>
+  <div class="swatches" id="colors"></div>
+  <h3>Fabric</h3>
+  <div class="fabric-grid" id="fabrics"></div>
+</details>
+
+<div id="viewer"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ---------- Configuration ---------- */
+// jsDelivr serves GitHub files with proper caching and CDN headers.
+const BASE = 'https://cdn.jsdelivr.net/gh/GOBaluma/K-750@main/';
+// New file name on purpose: the browser and jsDelivr can't serve a stale cached copy of the old model.
+const MODEL_URL = BASE + 'K-750_uv-fixed.glb';
+
+const COLORS = [
+  { label: 'Matte Black', hex: '#111111' },
+  { label: 'Gloss Black', hex: '#2b2b2b' },
+  { label: 'Graphite', hex: '#383838' },
+  { label: 'Adobe', hex: '#947a64' },
+  { label: 'White', hex: '#FFFFFF' },
+  { label: 'Ivory',  hex: '#e4e2cb' },
+  { label: 'Vanilla',  hex: '#fcfee4' },
+  { label: 'Yellow',  hex: '#fcf28a' },
+  { label: 'Citron',  hex: '#fcfab4' },
+  { label: 'Driftwood',  hex: '#d4ce9c' },
+  { label: 'Camel',  hex: '#fccd9c' },
+  { label: 'Terracotta', hex: '#672d22' },
+  { label: 'Dark Green', hex: '#013220' },
+  { label: 'French Blue', hex: '#a4b4cc' },
+  { label: 'Royal Blue', hex: '#0e5895' },
+  { label: 'Navy Blue', hex: '#0a1d34' },
+  { label: 'Grey', hex: '#a4a6a4' },
+  { label: 'Jade', hex: '#267965' },
+  { label: 'Clover', hex: '#86aa9e' },
+  { label: 'Leisure Brown', hex: '#441214' },
+  { label: 'Putty', hex: '#b5ad9a' },
+  { label: 'Coffee', hex: '#644b4c' },
+  { label: 'Mistletoe', hex: '#899a7c' },
+  { label: 'Papaya', hex: '#fccab4' },
+  { label: 'Holly Green', hex: '#4c5f54' },
+  { label: 'Sherwood Green', hex: '#113804' },
+  { label: 'Deepwater Blue', hex: '#0b5558' },
+  { label: 'Forest Green', hex: '#1d2b2b' },
+  { label: 'Dove', hex: '#c8c4bb' },
+];
+
+const FABRICS = [
+  { id: 'putty', label: '111 Putty',          file: '111_putty_shade.png' },
+  { id: 'green', label: '112 Forest Green',   file: '112_forest_green.png' },
+  { id: 'blue',  label: '114 Wedgewood Blue', file: '114_wedgewood_blue.png' },
+  { id: 'teal',  label: '118 Teal Shade',     file: '118_teal_shade.png' },
+  { id: 'grey',  label: '121 Grey',           file: '121_Grey.png' },
+  { id: 'eliz',  label: '182 Elizabeth',      file: '182_Elizabeth.png' },
+  { id: 'kozoa', label: '254 Kozo Abalone',   file: '254_kozo_abalone.png' },
+  { id: 'kozof', label: '255 Kozo Fossil',    file: '255_kozo_fossil.png' },
+  { id: 'kozoj', label: '256 Kozo Jewel',     file: '256_kozo_jewel.png' },
+  { id: 'intrc', label: '259 Interlock Calypso', file: '259_interlock_calypso.png' },
+  { id: 'intrl', label: '260 Interlock Linen', file: '260_interlock_linen.png' },
+  { id: 'pacif', label: '261 Pacific',        file: '261_pacific.png' },
+  { id: 'lirb',  label: '262 Lir Breeze',     file: '262_lir_breeze.png' },
+  { id: 'dayt',  label: '263 Daytripper Denim', file: '263_daytripper_denim.png' },
+  { id: 'cococ', label: '264 Coco Confetti',  file: '264_COCO_CONFETTI.png' },
+  { id: 'cocoh', label: '265 Coco Hightide',  file: '265_coco_hightide.png' },
+  { id: 'tempo', label: '267 Tempo Spearmint', file: '267_TEMPO_SPEARMINT.png' },
+  { id: 'veran', label: '268 Veranda Nutmeg', file: '268_VERANDA_NUTMEG.png' },
+  { id: 'blazs', label: '270 Blazer Surf',    file: '270_BLAZER_SURF.png' },
+  { id: 'blazz', label: '271 Blazer Zinc',    file: '271_BLAZER_ZINC.png' },
+  { id: 'bwav',  label: '272 Broadway Wave',  file: '272_BROADWAY_WAVE.png' },
+  { id: 'madtp', label: '273 Madras Tweed Putty', file: '273_MADRAS_TWEED_PUTTY.png' },
+  { id: 'creel', label: '290 Creel Birch',    file: '290_CREEL_BIRCH.png' },
+  { id: 'jazzy', label: '297 Jazzy Raven',    file: '297_JAZZY_RAVEN.png' },
+  { id: 'konya', label: '300 Konya Player',   file: '300_KONYA_PLAYA.png' },
+  { id: 'burke', label: '322 Burke Rivera',   file: '322_BURKE_RIVERA.png' },
+  { id: 'whot',  label: '349 White Hot',      file: '349_WHITE_HOT.png' },
+  { id: 'cane',  label: '385 Cane Aluminum',  file: '385_CANE_ALUMINUM.png' },
+  { id: 'bshad', label: '420 Black Shade',    file: '420_black_shade.png' },
+  { id: 'ntwed', label: '433 New Tweed Indigo', file: '433_NEW_TWEED_INDIGO.png' },
+  { id: 'ptwed', label: '434 Pria Tweed Indigo', file: '434_PRIA_TWEED_INDIGO.png' },
+  { id: 'spast', label: '466 Spa Stripe',     file: '466_SPA_STRIPE.png' },
+  { id: 'fesco', label: '474 Fesco',          file: '474_FESCO.png' },
+  { id: 'crane', label: '538 Cane Grass Cloth', file: '538_CANE_GRASS_CLOTH.png' },
+  { id: 'Metw',  label: '556 Metallica White', file: '556_METALLICA_WHITE.png' },
+  { id: 'montb', label: '557 Montego Brown',  file: '557_MONTEGO_BROWN.png' },
+  { id: 'Straw', label: '558 Straw Mat Blue', file: '558_STRAW_MAT_BLUE.png' },
+  { id: 'tiki',  label: '559 Tiki Glow',      file: '559_TIKI_GLOW.png' },
+  { id: 'wctwd', label: '561 Tweed Pearlt',   file: '561_W_C__TWEED_PEARLY.png' },
+  { id: 'plata', label: '703 Plata',          file: '703_PLATA.png' },
+  { id: 'aquam', label: '908 Aqua Marine',    file: '908_AQUA_MARINE.png' },
+  { id: 'chplt', label: '913 Charm Platinum', file: '913_CHARM_PLATINUM.png' },
+  { id: 'fmap',  label: '915 Fusion Maple',   file: '915_FUSHION_MAPLE.png' },
+  { id: 'brain', label: '916 Braque Rain',    file: '916_BRAQUE_RAIN.png' },
+  { id: 'bgrap', label: '917 Braque Graphite', file: '917_BRAQUE_GRAPHITE.png' },
+  { id: 'madts', label: '918 Madras Tweed Surf', file: '918_MADRAS_TWEED_SURF.png' },
+  { id: 'owens', label: '920 Owen Stripe Surf', file: '920_OWEN_STRIPE_SURF.png' },
+  { id: 'shelb', label: '926 Shelby Cadet Blue', file: '926_SHELBY_CADET_BLUE.png' },
+  { id: 'indsl', label: '928 Indentation Silver', file: '928_INDENTATION_SILVER.png' },
+  { id: 'elise', label: '932 Elise Stripe',   file: '932_ELISE_STRIPE_CHES.png' },
+  { id: 'fsden', label: '933 Free Spirit Denim', file: '933_FREE_SPIRIT_DENIM.png' },
+  { id: 'carc',  label: '934 Caribbean Cane', file: '934_CARIBBEAN_CANE.png' },
+  { id: 'yelsh', label: 'B-07 Yellow Shade',  file: 'B-07_YELLOW_SHADE.png' },
+  { id: 'royb',  label: 'B-10 Royal Blue',    file: 'B-10_royal_blue.png' },
+  { id: 'dupo',  label: 'B-63 Dupioni Poolside', file: 'B-63_DUPIONI_POOLSIDE.png' },
+  { id: 'rawl',  label: 'B-69 Raw Linen',     file: 'B-69_RAW_LINEN.png' },
+  { id: 'natu',  label: 'B-83 Natura',        file: 'B-83_NATURA.png' },
+  { id: 'tropi', label: 'B-84 Tropico',       file: 'B-84_TROPICO.png' },
+  { id: 'ches',  label: 'C-32 Chesterfield',  file: 'C-32_CHESTERFIELD.png' },
+  { id: 'aquaf', label: 'C-71 Aquafino',      file: 'C-71_AQUAFINO.png' },
+  { id: 'delrs', label: 'C-76 Delray Stripe', file: 'C-76_DELRAY_STRIPE.png' },
+  { id: 'vblu',  label: 'C-81 Valencia Blue', file: 'C-81_VALENCIA_BLUE.png' },
+  { id: 'hoff',  label: 'C-82 Hoffman',       file: 'C-82_HOFFMAN.png' },
+  { id: 'seab',  label: 'C-83 Seabreeze',     file: 'C-83_SEABREEZE.png' },
+  { id: 'madn',  label: 'D-46 Madera Natural', file: 'D-46_MADERA_NATURAL.png' },
+  { id: 'cwicb', label: 'D-55 Cane Wicker Balsa', file: 'D-55_CANE_WICKER_BALSA.png' },
+  { id: 'cwicd', label: 'D-56 Cane Wicker Desert', file: 'D-56_CANE_WICKER_DESERT.png' },
+  { id: 'dwood', label: 'D-70 Driftwood',     file: 'D-70_DRIFTWOOD.png' },
+  { id: 'madtu', label: 'E-11 Madera Turquesa', file: 'E-11_MADERA_TURQUESA.png' },
+  { id: 'cwic',  label: 'EC1 Cane Wicker Coral', file: 'EC1_CANE_WICKER_CORAL.png' },
+  { id: 'dusap', label: 'L96 Dupioni Sapphire', file: 'L96_DUPIONI_SAPPHIRE.png' },
+  { id: 'ogawo', label: 'OGA White Oyster', file: 'OGA_WHITE_OYSTER.png' },
+].map(f => ({ ...f, url: BASE + encodeURIComponent(f.file) }));
+
+// With the fixed UVs, 2.86 makes the texture span the chair's width exactly once (no tile seam across the seat).
+// Raise it for a finer weave and smaller stripes, lower it for a coarser one.
+const FABRIC_REPEAT = 2.86;
+
+/* ---------- State ---------- */
+const loadingEl = document.getElementById('loading');
+const tintMeshes = [];   // frame + slings, recolored together
+const fabricMeshes = [];
+const textureCache = new Map();
+let latestFabric = null;
+let scene, camera, renderer, controls;
+
+/* ---------- Setup ---------- */
+init();
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf3f3f3);
+
+  camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+  camera.position.set(2, 2, 4);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  document.getElementById('viewer').appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.autoRotate = true;
+  controls.addEventListener('start', () => { controls.autoRotate = false; });
+
+  createLights();
+  buildUI();
+  loadModel();
+
+  // Start collapsed on small screens so the panel doesn't cover the chair
+  if (innerWidth < 600) document.getElementById('panel').open = false;
+
+  addEventListener('resize', onResize);
+  renderer.setAnimationLoop(animate);
+}
+
+function createLights() {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5);
+  key.position.set(5, 8, 5);
+  scene.add(key);
+}
+
+/* ---------- Model ---------- */
+function loadModel() {
+  new GLTFLoader().load(
+    MODEL_URL,
+    gltf => {
+      const model = gltf.scene;
+
+      model.traverse(mesh => {
+        if (!mesh.isMesh) return;
+        // Clone so recoloring one mesh never affects shared materials (handles material arrays too)
+        mesh.material = Array.isArray(mesh.material)
+          ? mesh.material.map(m => m.clone())
+          : mesh.material.clone();
+
+        const name = mesh.name.toUpperCase();
+        if (name.includes('FRAME') || name.includes('SLING')) tintMeshes.push(mesh);
+        if (name.includes('FABRIC')) fabricMeshes.push(mesh);
+      });
+
+      if (!tintMeshes.length) console.warn('No meshes matched FRAME/SLING. Check the mesh names in the GLB.');
+      if (!fabricMeshes.length) console.warn('No meshes matched FABRIC. Check the mesh names in the GLB.');
+
+      // Center the model, then frame it with the camera
+      const box = new THREE.Box3().setFromObject(model);
+      model.position.sub(box.getCenter(new THREE.Vector3()));
+      scene.add(model);
+      frameModel(box.getSize(new THREE.Vector3()));
+
+      loadingEl.style.display = 'none';
+      selectFabric(FABRICS[0].id);
+    },
+    e => {
+      if (e.total) loadingEl.textContent = `Loading K-750… ${Math.round(e.loaded / e.total * 100)}%`;
+    },
+    err => {
+      console.error(err);
+      loadingEl.classList.add('error');
+      loadingEl.textContent = 'Could not load the model. Please refresh and try again.';
+    }
+  );
+}
+
+function frameModel(size) {
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const dist = (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))) * 1.8;
+
+  camera.near = dist / 100;
+  camera.far = dist * 20;
+  camera.updateProjectionMatrix();
+  camera.position.set(0.5, 0.35, 1).normalize().multiplyScalar(dist);
+
+  controls.target.set(0, 0, 0);
+  controls.minDistance = dist * 0.4;
+  controls.maxDistance = dist * 2.5;
+  controls.maxPolarAngle = Math.PI / 2 - 0.05; // keep the camera above the floor
+  controls.update();
+}
+
+/* ---------- UI ---------- */
+function buildUI() {
+  const colorsEl = document.getElementById('colors');
+  COLORS.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'color' + (i === 0 ? ' selected' : '');
+    btn.innerHTML = '<span class="dot"></span><span class="name"></span>';
+    btn.querySelector('.dot').style.background = c.hex;
+    btn.querySelector('.name').textContent = c.label;
+    btn.setAttribute('aria-label', `Frame color: ${c.label}`);
+    btn.addEventListener('click', () => {
+      colorsEl.querySelectorAll('.color').forEach(b => b.classList.toggle('selected', b === btn));
+      tintMeshes.forEach(mesh => {
+        [].concat(mesh.material).forEach(m => m.color.set(c.hex));
+      });
+    });
+    colorsEl.appendChild(btn);
+  });
+
+  const fabricsEl = document.getElementById('fabrics');
+  FABRICS.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'fabric-swatch';
+    btn.dataset.fabric = f.id;
+    btn.innerHTML = `<img alt="" loading="lazy"><span></span>`;
+    btn.querySelector('img').src = f.url;
+    btn.querySelector('span').textContent = f.label;
+    btn.setAttribute('aria-label', `Fabric: ${f.label}`);
+    btn.addEventListener('click', () => selectFabric(f.id));
+    fabricsEl.appendChild(btn);
+  });
+}
+
+function selectFabric(id) {
+  document.querySelectorAll('.fabric-swatch').forEach(b =>
+    b.classList.toggle('selected', b.dataset.fabric === id));
+  applyFabric(id);
+}
+
+/* ---------- Fabric textures ---------- */
+function applyFabric(id) {
+  latestFabric = id; // ignore results of older, slower requests
+
+  const apply = texture => {
+    if (latestFabric !== id) return;
+    fabricMeshes.forEach(mesh => {
+      [].concat(mesh.material).forEach(m => { m.map = texture; m.needsUpdate = true; });
+    });
+  };
+
+  if (textureCache.has(id)) return apply(textureCache.get(id));
+
+  const fabric = FABRICS.find(f => f.id === id);
+  new THREE.TextureLoader().load(
+    fabric.url,
+    texture => {
+      texture.flipY = false; // required for glTF UVs
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.ClampToEdgeWrapping; // width: one tile, so no seam
+      texture.wrapT = THREE.RepeatWrapping;       // length: stripes run along it, so tiling is invisible
+      texture.repeat.set(FABRIC_REPEAT, FABRIC_REPEAT);
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      textureCache.set(id, texture);
+      apply(texture);
+    },
+    undefined,
+    err => console.error(`Could not load fabric "${id}"`, err)
+  );
+}
+
+/* ---------- Loop ---------- */
+function onResize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+}
+
+function animate() {
+  controls.update();
+  renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>
