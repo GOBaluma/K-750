@@ -1,0 +1,3070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Furniture Group Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #eef4f7;
+    --muted: rgba(238, 244, 247, .62);
+    --faint: rgba(238, 244, 247, .38);
+    --line: rgba(255, 255, 255, .09);
+    --line-strong: rgba(255, 255, 255, .18);
+    --glass: rgba(6, 22, 29, .72);
+    --glass-2: rgba(255, 255, 255, .045);
+    --accent: #3fb3da;
+    --accent-2: #21809f;
+    --accent-soft: rgba(63, 179, 218, .18);
+    --grad: linear-gradient(135deg, #ffffff 0%, #d6e4ea 42%, #8fc0d2 100%);
+    --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  }
+  [hidden] { display: none !important; }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: var(--sans); color: var(--ink); }
+  body { background: #06141a; transition: background .6s ease; }
+  body[data-stage="night"] { background: radial-gradient(120% 90% at 62% 42%, #1d5a70 0%, #0d2a36 45%, #050d11 100%); }
+  body[data-stage="light"] { background: radial-gradient(120% 90% at 62% 42%, #ffffff 0%, #e7eef1 48%, #c4d3da 100%); }
+  #viewer { position: absolute; inset: 0; }
+  #viewer canvas { display: block; }
+  .vignette { position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background: radial-gradient(130% 100% at 60% 45%, transparent 55%, rgba(0, 0, 0, .45) 100%); transition: opacity .6s; }
+  body[data-stage="light"] .vignette { opacity: .25; }
+
+  button { font: inherit; color: inherit; padding: 0; background: none; border: 0; cursor: pointer; }
+  button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Loading ---------- */
+  #loading { position: absolute; inset: 0; z-index: 3000; display: grid; place-items: center; text-align: center;
+    background: radial-gradient(100% 80% at 50% 45%, #16475a 0%, #061116 100%); transition: opacity .9s ease, visibility .9s; }
+  #loading.done { opacity: 0; visibility: hidden; }
+  #loading .orb { width: 74px; height: 74px; margin: 0 auto 22px; border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0 25%, #ffffff, #8fd0e6, #21809f, transparent 90%);
+    -webkit-mask: radial-gradient(circle, transparent 31px, #000 32px); mask: radial-gradient(circle, transparent 31px, #000 32px);
+    animation: spin 1.1s linear infinite; }
+  #loading .big { font-family: var(--serif); font-size: clamp(30px, 5vw, 46px); letter-spacing: .01em; }
+  #loading .big em { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #loading .small { margin-top: 8px; font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: var(--faint); }
+  #loading.error .small { color: #ff8a80; letter-spacing: .04em; text-transform: none; font-size: 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #status { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 998;
+    background: rgba(6, 20, 27, .8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); color: var(--ink); padding: 9px 18px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  #status::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 9px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 10px var(--accent); vertical-align: 1px; animation: blink 1s ease-in-out infinite; }
+  #status.error { background: #8e1f19; }
+  #status.error::before { display: none; }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  #toast { position: absolute; left: 50%; top: 22px; z-index: 2500; transform: translate(-50%, -16px); opacity: 0; pointer-events: none;
+    background: rgba(6, 20, 27, .88); border: 1px solid var(--line-strong); padding: 10px 18px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; transition: .35s cubic-bezier(.2, .9, .3, 1.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  #hint { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 997; pointer-events: none;
+    font-size: 12px; letter-spacing: .06em; color: var(--muted); padding: 8px 16px; border-radius: 999px;
+    background: rgba(5, 18, 24, .45); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: opacity .8s; white-space: nowrap; }
+  #hint.gone { opacity: 0; }
+
+  /* ---------- Glass panel ---------- */
+  .glass { background: var(--glass); backdrop-filter: blur(22px) saturate(150%); -webkit-backdrop-filter: blur(22px) saturate(150%);
+    border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06); }
+
+  #panel { position: absolute; top: 20px; left: 20px; z-index: 1000; width: min(500px, calc(100vw - 40px));
+    max-height: calc(100vh - 84px); overflow: hidden; border-radius: 20px; display: flex; flex-direction: column;
+    animation: slideIn .9s cubic-bezier(.2, .9, .25, 1) both .2s; }
+  #panel > summary { list-style: none; cursor: pointer; padding: 18px 20px 14px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  #panel > summary::-webkit-details-marker { display: none; }
+  .eyebrow { font-size: 10.5px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; color: var(--accent); }
+  .title { font-family: var(--serif); font-size: 32px; line-height: 1; margin-top: 6px; font-weight: 400; }
+  .title em { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .chev { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-strong); display: grid; place-items: center; transition: transform .35s; }
+  .chev svg { width: 14px; height: 14px; }
+  #panel:not([open]) .chev { transform: rotate(-90deg); }
+  #panel:not([open]) > summary { padding-bottom: 18px; }
+  .panel-body { display: flex; flex-direction: column; min-height: 0; padding: 0 20px 18px; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-30px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  #summary { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; padding: 5px 10px;
+    border-radius: 999px; background: var(--glass-2); border: 1px solid var(--line); color: var(--ink); white-space: nowrap; animation: pop .35s ease both; }
+  .chip .sw { width: 13px; height: 13px; border-radius: 50%; background-size: cover; background-position: center; box-shadow: 0 0 0 1px rgba(255, 255, 255, .3); }
+  @keyframes pop { from { opacity: 0; transform: scale(.9); } }
+
+  .tabs { position: relative; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: rgba(0, 0, 0, .28); border: 1px solid var(--line); margin-bottom: 14px; }
+  .tab { position: relative; z-index: 1; flex: 1; padding: 8px 4px; font-size: 12.5px; font-weight: 700; color: var(--muted); border-radius: 10px; transition: color .25s; white-space: nowrap; }
+  .tab i { font-style: normal; font-size: 9.5px; letter-spacing: .08em; color: var(--faint); margin-right: 5px; transition: color .25s; }
+  .tab:hover { color: var(--ink); }
+  .tab.selected { color: #0a2733; }
+  .tab.selected i { color: rgba(10, 39, 51, .55); }
+  .tab-ink { position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 10px; background: var(--grad);
+    box-shadow: 0 6px 20px rgba(33, 128, 159, .45); transition: transform .45s cubic-bezier(.2, .9, .25, 1.1), width .45s cubic-bezier(.2, .9, .25, 1.1); }
+  #tab-quote:not(.selected)::after { content: ''; position: absolute; top: 6px; right: 8px; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent-2); box-shadow: 0 0 0 0 rgba(63, 179, 218, .7); animation: ping 2s infinite; }
+  @keyframes ping { 70% { box-shadow: 0 0 0 7px rgba(63, 179, 218, 0); } 100% { box-shadow: 0 0 0 0 rgba(63, 179, 218, 0); } }
+
+  .tab-content { flex: 1; min-height: 160px; max-height: calc(100vh - 290px); overflow: auto; padding: 4px; margin: -4px;
+    scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .2) transparent; }
+  [role="tabpanel"] { animation: fadeUp .4s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
+
+  .section-label { font-size: 10.5px; font-weight: 800; color: var(--faint); text-transform: uppercase; letter-spacing: .2em; margin: 6px 0 10px; }
+  .hint { font-size: 12.5px; color: var(--muted); margin: 12px 0 0; line-height: 1.5; }
+  .hint b { color: var(--ink); font-weight: 700; }
+
+  /* Layout tab */
+  .layout-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .layout-card { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: 14px; background: var(--glass-2); transition: .25s; }
+  .layout-card:hover { border-color: var(--line-strong); background: rgba(255, 255, 255, .07); transform: translateY(-1px); }
+  .layout-card.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 24px rgba(63, 179, 218, .18); }
+  .layout-card svg { flex: none; width: 46px; height: 46px; color: var(--faint); transition: color .25s; }
+  .layout-card.selected svg { color: var(--accent); }
+  .layout-card span { font-size: 13px; font-weight: 700; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 4px; padding: 12px 14px; border-radius: 14px; background: var(--glass-2); border: 1px solid var(--line); }
+  .stepper { display: flex; align-items: center; gap: 14px; }
+  .stepper button { width: 34px; height: 34px; border: 1px solid var(--line-strong); border-radius: 50%; font-size: 18px; line-height: 1; transition: .2s; }
+  .stepper button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .stepper button:disabled { opacity: .3; cursor: default; }
+  .stepper output { min-width: 28px; text-align: center; font-family: var(--serif); font-size: 30px; line-height: 1; }
+  .check { display: flex; align-items: center; gap: 10px; font-size: 13.5px; margin-top: 12px; cursor: pointer; }
+  .check input { appearance: none; -webkit-appearance: none; width: 38px; height: 22px; border-radius: 999px; margin: 0; background: rgba(255, 255, 255, .14); position: relative; cursor: pointer; transition: .25s; }
+  .check input::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .25s; }
+  .check input:checked { background: var(--grad); }
+  .check input:checked::after { transform: translateX(16px); }
+
+  /* Floor plan */
+  .layout-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .layout-card { flex-direction: column; justify-content: center; gap: 5px; padding: 9px 4px 8px; text-align: center; }
+  .layout-card svg { width: 34px; height: 34px; }
+  .layout-card span { font-size: 11px; line-height: 1.2; }
+  .preset-opts .row { margin: 10px 0 0; padding: 8px 12px; }
+  .preset-opts .check { margin-top: 8px; }
+  .plan-head { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 0 8px; }
+  #planDims { font-size: 11.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .plan-wrap { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line-strong); aspect-ratio: 1 / 1; max-width: 100%; margin: 0 auto;
+    background: radial-gradient(120% 100% at 50% 40%, #163846, #0a1a21); }
+  #plan { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #plan:focus { outline: none; }
+  #plan:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  #plan .grid line { stroke: rgba(255, 255, 255, .05); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  #plan .grid line.major { stroke: rgba(255, 255, 255, .13); }
+  #plan .pc { cursor: grab; }
+  #plan .pc .body { fill: rgba(63, 179, 218, .16); stroke: rgba(63, 179, 218, .8); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+  #plan .pc.table .body { fill: rgba(255, 255, 255, .09); stroke: rgba(255, 255, 255, .55); }
+  #plan .pc .front { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  #plan .pc.sel .body { fill: rgba(63, 179, 218, .36); stroke: #bfe6f3; stroke-width: 2.5; }
+  #plan .pc.table.sel .body { fill: rgba(255, 255, 255, .2); stroke: #fff; }
+  #plan .pc.clash .body { stroke: #ff5a4f; fill: rgba(255, 90, 79, .22); }
+  #plan .pc text { fill: var(--ink); font-family: var(--sans); font-weight: 800; text-anchor: middle; dominant-baseline: central; pointer-events: none;
+    paint-order: stroke; stroke: rgba(10, 11, 14, .7); stroke-width: 3px; vector-effect: non-scaling-stroke; }
+  #plan .handle line { stroke: #bfe6f3; stroke-width: 1.5; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+  #plan .handle circle { fill: #bfe6f3; stroke: #0a2733; stroke-width: 2; vector-effect: non-scaling-stroke; cursor: grab; }
+  #plan .handle circle.hit { fill: transparent; stroke: none; }
+  .plan-fit { position: absolute; right: 8px; top: 8px; background: rgba(6, 20, 27, .75); }
+  .plan-sel { position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px); font-size: 11px; font-weight: 700; padding: 5px 10px;
+    border-radius: 999px; background: rgba(6, 20, 27, .8); border: 1px solid var(--line); pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plan-tools { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+  .plan-tools select { flex: 1; min-width: 0; max-width: none; }
+  .plan-tools .dk { width: 36px; height: 36px; flex: none; }
+  .plan-tools .dk:disabled { opacity: .3; cursor: default; }
+  .hint.warn { color: #ff8a80; margin-top: 8px; }
+  /* Short screens: a tighter panel so the floor plan keeps a useful size */
+  @media (max-height: 800px) {
+    #panel > summary { padding-top: 12px; padding-bottom: 10px; }
+    .eyebrow { display: none; }
+    .title { font-size: 26px; margin-top: 0; }
+    #summary { margin-bottom: 10px; }
+    .tabs { margin-bottom: 10px; }
+    .layout-card svg { display: none; }
+    .layout-card { padding: 9px 4px; }
+    .plan-head { margin: 10px 0 6px; }
+    .preset-opts .row { padding: 4px 12px; }
+  }
+  .piece-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 4px 4px 4px 10px; border-radius: 12px;
+    border: 1px solid transparent; font-size: 13px; color: var(--muted); cursor: pointer; transition: .2s; }
+  .piece-row:hover { background: var(--glass-2); }
+  .piece-row.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+  .piece-row > span { flex: 1; white-space: nowrap; }
+  .piece-row select { min-width: 0; width: 62%; max-width: none; }
+  .piece-row .dk { flex: none; }
+  .piece-row.has-top { flex-wrap: wrap; row-gap: 4px; }
+  .piece-row .top-line { flex-basis: 100%; display: flex; align-items: center; gap: 8px; padding-right: 40px; }
+  .piece-row .top-line > small { flex: 1; font-size: 12px; color: var(--faint); white-space: nowrap; }
+
+  /* Pieces tab */
+  .field { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 10px; }
+  select { font: inherit; font-size: 13px; font-weight: 500; color: var(--ink); padding: 8px 32px 8px 12px; border: 1px solid var(--line-strong); border-radius: 10px;
+    min-width: 210px; max-width: 62%; appearance: none; -webkit-appearance: none; cursor: pointer;
+    background: rgba(0, 0, 0, .3) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23f2a65a' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center; }
+  select option { background: #0d2029; color: #eef4f7; }
+  #seatList .field { margin-bottom: 6px; font-weight: 500; color: var(--muted); }
+
+  /* Finishes */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px 6px; }
+  .color { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .color .dot { width: 48px; height: 48px; border-radius: 50%; background-size: cover; background-position: center; background-repeat: no-repeat;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), 0 6px 14px rgba(0, 0, 0, .35); transition: transform .25s, box-shadow .25s; }
+  .color:hover .dot { transform: scale(1.08); }
+  .color .name { font-size: 10.5px; text-align: center; color: var(--muted); line-height: 1.25; }
+  .color.selected .dot { transform: scale(1.06); box-shadow: 0 0 0 2px #081820, 0 0 0 4px var(--accent), 0 0 22px rgba(63, 179, 218, .55); }
+  .color.selected .name { color: var(--ink); font-weight: 700; }
+
+  .fabric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .fabric-swatch { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--glass-2); transition: .25s; position: relative; }
+  .fabric-swatch:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+  .fabric-swatch.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 10px 26px rgba(63, 179, 218, .25); }
+  .fabric-swatch.selected::after { content: '✓'; position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--grad); color: #0a2733; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+  .fabric-swatch img { width: 100%; aspect-ratio: 1 / 1; height: auto; display: block; object-fit: cover; }
+  .fabric-swatch span { display: block; text-align: center; font-size: 10.5px; padding: 6px 4px; color: var(--muted); }
+  .fabric-swatch.selected span { color: var(--ink); font-weight: 700; }
+
+  /* Quote tab */
+  .preview { margin: 0 0 14px; position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line);
+    background: radial-gradient(100% 90% at 50% 40%, #244e5e, #0c1c23); aspect-ratio: 16 / 10; }
+  body[data-stage="light"] .preview { background: radial-gradient(100% 90% at 50% 40%, #fff, #d8d5cf); }
+  .preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .preview figcaption { position: absolute; left: 10px; bottom: 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .14em;
+    padding: 5px 10px; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; }
+  .bom { list-style: none; margin: 0 0 14px; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .bom li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; font-size: 13px; }
+  .bom li + li { border-top: 1px solid var(--line); }
+  .bom .qty { font-family: var(--serif); font-size: 24px; line-height: 1; min-width: 34px; color: var(--accent); }
+  .bom .nm { flex: 1; font-weight: 600; }
+  .bom .code { font-size: 11px; color: var(--faint); font-weight: 700; letter-spacing: .06em; }
+  .finish-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .finish { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--glass-2); }
+  .finish .sw { flex: none; width: 34px; height: 34px; border-radius: 10px; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
+  .finish small { display: block; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); font-weight: 800; }
+  .finish b { font-size: 12.5px; font-weight: 700; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .inp { display: flex; flex-direction: column; gap: 5px; font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  .inp { min-width: 0; }
+  .inp.wide { grid-column: 1 / -1; }
+  .inp input, .inp textarea { font: inherit; font-size: 13.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink);
+    padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(0, 0, 0, .28); resize: vertical; transition: border-color .2s; width: 100%; min-width: 0; }
+  .inp input::placeholder, .inp textarea::placeholder { color: var(--faint); }
+  .inp input:focus, .inp textarea:focus { border-color: var(--accent); outline: none; }
+  .inp.invalid input { border-color: #ff6b5e; box-shadow: 0 0 0 3px rgba(255, 107, 94, .2); }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px; border-radius: 12px; font-size: 13.5px; font-weight: 700;
+    border: 1px solid var(--line-strong); background: var(--glass-2); transition: .25s; }
+  .btn svg { width: 16px; height: 16px; }
+  .btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .btn.primary { grid-column: 1 / -1; border: 0; color: #0a2733; background: var(--grad); background-size: 200% 100%; font-size: 14.5px; padding: 14px;
+    box-shadow: 0 12px 30px rgba(33, 128, 159, .35); position: relative; overflow: hidden; }
+  .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 16px 36px rgba(33, 128, 159, .5); }
+  .btn.primary::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .55) 50%, transparent 70%);
+    transform: translateX(-100%); animation: shine 3.2s ease-in-out infinite; }
+  @keyframes shine { 60%, 100% { transform: translateX(100%); } }
+
+  /* ---------- Get-a-quote call to action ---------- */
+  #cta { position: absolute; top: 22px; right: 22px; z-index: 1000; display: flex; align-items: center; gap: 10px;
+    padding: 12px 20px 12px 16px; border-radius: 999px; font-weight: 800; font-size: 13.5px; color: #0a2733; background: var(--grad);
+    box-shadow: 0 12px 34px rgba(33, 128, 159, .45); animation: dropIn .8s cubic-bezier(.2, .9, .25, 1.2) both .9s; overflow: hidden; }
+  #cta svg { width: 16px; height: 16px; }
+  #cta::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .6) 50%, transparent 70%);
+    transform: translateX(-100%); animation: shine 3.8s ease-in-out infinite 2s; }
+  #cta:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(33, 128, 159, .6); }
+  @keyframes dropIn { from { opacity: 0; transform: translateY(-20px); } }
+
+  /* ---------- View controls dock (lower right) ---------- */
+  #dock { position: absolute; right: 18px; bottom: 18px; z-index: 1001; border-radius: 18px; padding: 10px; width: 216px;
+    display: flex; flex-direction: column; gap: 8px; animation: dockIn .8s cubic-bezier(.2, .9, .25, 1.15) both 1s; }
+  @keyframes dockIn { from { opacity: 0; transform: translateY(24px) scale(.96); } }
+  .dk { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--ink); background: rgba(255, 255, 255, .05);
+    border: 1px solid var(--line); transition: background .2s, border-color .2s, color .2s, transform .1s; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .dk svg { width: 15px; height: 15px; pointer-events: none; }
+  .dk:hover { background: rgba(255, 255, 255, .11); border-color: var(--line-strong); }
+  .dk:active, .dk.held { transform: scale(.92); background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .dk.on { background: var(--grad); color: #0a2733; border-color: transparent; }
+  .dock-row { display: flex; align-items: center; gap: 8px; }
+  .dock-row output { font-size: 11px; font-weight: 800; min-width: 34px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .speed { flex: 1; min-width: 0; appearance: none; -webkit-appearance: none; height: 4px; border-radius: 4px; outline-offset: 6px; cursor: pointer;
+    background: linear-gradient(90deg, var(--accent) 0 var(--p, 21%), rgba(255, 255, 255, .15) var(--p, 21%) 100%); }
+  .speed::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(63, 179, 218, .45); }
+  .speed::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(63, 179, 218, .45); }
+  .dock-main { display: flex; gap: 8px; justify-content: space-between; }
+  .pad { display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap: 3px; padding: 3px; border-radius: 50%;
+    background: rgba(0, 0, 0, .22); border: 1px solid var(--line); }
+  .pad .dk { border-radius: 50%; background: transparent; border-color: transparent; }
+  .pad .dk:hover { background: rgba(255, 255, 255, .1); }
+  .pad .mid { background: rgba(255, 255, 255, .07); border-color: var(--line); }
+  .col { display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+  .col.zoom { padding: 3px; border-radius: 12px; background: rgba(0, 0, 0, .22); border: 1px solid var(--line); }
+  .col.zoom .dk { background: transparent; border-color: transparent; }
+  .col.zoom .zl { font-size: 8.5px; font-weight: 800; letter-spacing: .1em; text-align: center; color: var(--faint); }
+  .views { display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: rgba(0, 0, 0, .22); border: 1px solid var(--line); }
+  .views button { flex: 1; padding: 5px 0; border-radius: 7px; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: var(--muted); transition: .2s; }
+  .views button:hover { color: var(--ink); background: rgba(255, 255, 255, .08); }
+  .views button.active { color: #0a2733; background: var(--grad); }
+  .dock-head { display: flex; align-items: center; justify-content: space-between; }
+  .dock-head span { font-size: 9.5px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: var(--faint); padding-left: 2px; }
+  .dock-head .dk { width: 22px; height: 22px; border-radius: 7px; }
+  .dock-head .dk svg { width: 12px; height: 12px; }
+  #dock.collapsed { width: auto; padding: 6px; border-radius: 50%; }
+  #dock.collapsed > :not(.dock-head) { display: none; }
+  #dock.collapsed .dock-head span { display: none; }
+  #dock.collapsed .dock-head .dk { width: 40px; height: 40px; border-radius: 50%; }
+  #dock.collapsed .dock-head .dk svg { width: 18px; height: 18px; }
+  #dock .ico-open { display: none; }
+  #dock.collapsed .ico-open { display: block; }
+  #dock.collapsed .ico-close { display: none; }
+
+  /* Light stage: keep the glass dark, soften the page */
+  body[data-stage="light"] #hint { color: #3a3833; background: rgba(255, 255, 255, .5); border-color: rgba(0, 0, 0, .08); }
+
+  @media (max-width: 900px) { #hint { display: none; } }
+  @media (max-width: 600px) {
+    #panel { top: 12px; left: 12px; width: calc(100vw - 24px); max-height: calc(100vh - 92px); border-radius: 18px; }
+    #panel > summary { padding: 14px 16px 12px; }
+    .panel-body { padding: 0 14px 14px; }
+    .title { font-size: 26px; }
+    .tab i { display: none; }
+    .tab { font-size: 12px; }
+    select { min-width: 0; max-width: 64%; }
+    .fabric-grid { grid-template-columns: repeat(3, 1fr); }
+    #cta { top: auto; bottom: 16px; left: 16px; right: auto; padding: 11px 16px; font-size: 13px; }
+    #dock { right: 12px; bottom: 12px; width: 200px; }
+    body.panel-open #dock, body.panel-open #cta { display: none; }
+    .tab-content { max-height: calc(100vh - 250px); }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+  /* ---------- Printed summary (Save as PDF) ---------- */
+  #printSheet { display: none; }
+  @media print {
+    @page { size: letter; margin: 0.45in; }
+    html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #10232b !important; }
+    body > *:not(#printSheet) { display: none !important; }
+    #printSheet { display: block; font-family: var(--sans); color: #10232b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  .ps-head { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 12px; border-bottom: 2px solid #10232b; }
+  .ps-eyebrow { font-size: 9px; font-weight: 800; letter-spacing: .28em; text-transform: uppercase; color: #21809f; }
+  .ps-title { font-family: var(--serif); font-size: 34px; line-height: 1; margin-top: 6px; }
+  .ps-meta { text-align: right; font-size: 10px; line-height: 1.6; color: #4a5a62; }
+  .ps-meta b { color: #10232b; font-size: 12px; letter-spacing: .06em; }
+  .ps-hero { margin-top: 14px; height: 3.5in; border-radius: 12px; background: radial-gradient(100% 90% at 50% 40%, #ffffff, #e9e6e0); display: grid; place-items: center; overflow: hidden; }
+  .ps-hero img { width: 100%; height: 100%; object-fit: contain; }
+  .ps-views { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .ps-views figure { margin: 0; height: 1.85in; border-radius: 10px; background: #f3f1ed; position: relative; overflow: hidden; }
+  .ps-views img { width: 100%; height: 100%; object-fit: contain; }
+  .ps-views figcaption { position: absolute; left: 8px; top: 7px; font-size: 8px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: #7d8b92; }
+  .ps-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 22px; margin-top: 16px; break-inside: avoid; }
+  .ps-h { font-size: 9px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: #7d8b92; margin: 0 0 6px; }
+  .ps-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .ps-table th { text-align: left; font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: #7d8b92; font-weight: 800; padding: 4px 0; border-bottom: 1px solid #cfd9de; }
+  .ps-table td { padding: 7px 0; border-bottom: 1px solid #e6ecef; }
+  .ps-table td.q { font-family: var(--serif); font-size: 18px; width: 40px; color: #21809f; }
+  .ps-table td.c { color: #7d8b92; font-size: 9.5px; font-weight: 700; text-align: right; }
+  .ps-table tfoot td { border: 0; font-weight: 700; padding-top: 8px; }
+  .ps-fin { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #e6ecef; font-size: 11.5px; }
+  .ps-fin .sw { width: 32px; height: 32px; border-radius: 7px; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); flex: none; }
+  .ps-fin .sw img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; display: block; }
+  .ps-fin small { display: block; font-size: 8px; letter-spacing: .18em; text-transform: uppercase; color: #7d8b92; font-weight: 800; }
+  .ps-fin b { font-weight: 700; }
+  .ps-kv { font-size: 11px; line-height: 1.7; margin-top: 12px; }
+  .ps-kv span { color: #7d8b92; display: inline-block; min-width: 72px; }
+  .ps-notes { margin-top: 6px; font-size: 10.5px; color: #3a3631; white-space: pre-wrap; }
+  .ps-foot { margin-top: 18px; padding-top: 10px; border-top: 1px solid #cfd9de; display: flex; justify-content: space-between; gap: 16px; font-size: 9.5px; color: #4a5a62; break-inside: avoid; }
+  .ps-foot b { color: #21809f; }
+  .ps-link { word-break: break-all; max-width: 60%; text-align: right; }
+
+  /* ---------- Color disclaimer (sits just below the left-hand panel) ---------- */
+  #colorNote { position: absolute; left: 20px; top: 0; z-index: 1000; width: min(500px, calc(100vw - 40px)); margin: 0; padding: 0 6px;
+    font-size: 11px; line-height: 1.45; letter-spacing: .01em; color: rgba(238, 244, 247, .62); pointer-events: none; visibility: hidden; }
+  #colorNote.ready { visibility: visible; }
+  body[data-stage="light"] #colorNote { color: #5f636b; }
+  @media (max-width: 600px) { #colorNote { left: 12px; width: calc(100vw - 24px); font-size: 10.5px; } }
+  @media print { #colorNote { display: none !important; } }
+
+  /* ---------- Sample request switches (Quote tab) ---------- */
+  .sample-row { margin: 0 0 8px; padding: 9px 14px; cursor: pointer; }
+  .sample-row small { display: block; font-size: 9.5px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); }
+  .sample-row b { font-size: 13.5px; font-weight: 700; }
+  .sample-row .check { margin: 0; }
+</style>
+</head>
+<body data-stage="night">
+<p id="colorNote" role="note">Colors shown are digital representations and may vary depending on individual screen and display settings. Fabric patterns are enlarged to show detail. Fabric samples are available upon request.</p>
+<script>
+  // Keep the color disclaimer just below the left-hand panel as the panel opens, closes or resizes.
+  document.addEventListener('DOMContentLoaded', () => {
+    const note = document.getElementById('colorNote'), panel = document.getElementById('panel');
+    if (!note || !panel) return;
+    const place = () => {
+      // offset* ignore the panel's entrance animation (a transform), so the note lands where the panel settles
+      note.style.left = panel.offsetLeft + 'px';
+      note.style.width = panel.offsetWidth + 'px';
+      note.style.top = (panel.offsetTop + panel.offsetHeight + 8) + 'px';
+      note.classList.add('ready');
+    };
+    place();
+    if (window.ResizeObserver) new ResizeObserver(place).observe(panel);
+    panel.addEventListener('toggle', place);
+    window.addEventListener('resize', place);
+  });
+</script>
+<div id="loading" role="status">
+  <div>
+    <div class="orb" aria-hidden="true"></div>
+    <div class="big">Setting the <em>scene</em></div>
+    <div class="small" id="loadingText">Loading your showroom</div>
+  </div>
+</div>
+<div id="status" role="status" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="hint">Drag to orbit · Scroll to zoom · Right-drag to pan</div>
+
+<div id="viewer"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<details id="panel" class="glass" open>
+  <summary>
+    <div>
+      <div class="eyebrow">Configurator</div>
+      <div class="title">Furniture <em>Group</em> Builder</div>
+    </div>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </summary>
+  <div class="panel-body">
+    <div id="summary" aria-live="polite"></div>
+    <div class="tabs" role="tablist" aria-label="Customize">
+      <span class="tab-ink" aria-hidden="true"></span>
+      <button class="tab selected" role="tab" id="tab-layout" aria-controls="pane-layout" aria-selected="true"><i>01</i>Layout</button>
+      <button class="tab" role="tab" id="tab-pieces" aria-controls="pane-pieces" aria-selected="false" tabindex="-1"><i>02</i>Pieces</button>
+      <button class="tab" role="tab" id="tab-frame" aria-controls="pane-frame" aria-selected="false" tabindex="-1"><i>03</i>Frame</button>
+      <button class="tab" role="tab" id="tab-fabric" aria-controls="pane-fabric" aria-selected="false" tabindex="-1"><i>04</i>Fabric</button>
+      <button class="tab" role="tab" id="tab-quote" aria-controls="pane-quote" aria-selected="false" tabindex="-1"><i>05</i>Quote</button>
+    </div>
+    <div class="tab-content">
+      <div role="tabpanel" id="pane-layout" aria-labelledby="tab-layout">
+        <div class="section-label">Start from a pattern</div>
+        <div class="layout-grid" id="layouts"></div>
+        <div class="preset-opts" id="presetOpts">
+          <div class="row">
+            <span class="section-label" style="margin:0">Seats</span>
+            <div class="stepper">
+              <button id="seatMinus" aria-label="Fewer seats">&minus;</button>
+              <output id="seatCount" aria-live="polite"></output>
+              <button id="seatPlus" aria-label="More seats">+</button>
+            </div>
+          </div>
+          <label class="check" id="betweenRow"><input type="checkbox" id="between"> <span id="betweenText">Put a table between the seats</span></label>
+        </div>
+        <div class="plan-head">
+          <span class="section-label" style="margin:0">Floor plan</span>
+          <span id="planDims"></span>
+        </div>
+        <div class="plan-wrap">
+          <svg id="plan" tabindex="0" role="application" aria-label="Floor plan. Drag a piece to move it, drag the round handle to turn it. With a piece selected, arrow keys nudge it, R turns it and Delete removes it."></svg>
+          <button class="dk plan-fit" id="planFit" title="Fit the plan to the furniture" aria-label="Fit the plan to the furniture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><circle cx="12" cy="12" r="2.5"/></svg></button>
+          <div class="plan-sel" id="planSel" hidden></div>
+        </div>
+        <div class="plan-tools">
+          <select id="addSel" aria-label="Add a piece"></select>
+          <button class="dk" id="rotLeft" title="Turn left 45°" aria-label="Turn the selected piece left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
+          <button class="dk" id="rotRight" title="Turn right 45°" aria-label="Turn the selected piece right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><g transform="matrix(-1 0 0 1 24 0)"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></g></svg></button>
+          <button class="dk" id="dupBtn" title="Duplicate" aria-label="Duplicate the selected piece"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
+          <button class="dk" id="delBtn" title="Remove" aria-label="Remove the selected piece"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+        </div>
+        <p class="hint warn" id="planWarn" hidden>Pieces outlined in red overlap.</p>
+        <p class="hint" id="layoutHint"></p>
+      </div>
+      <div role="tabpanel" id="pane-pieces" aria-labelledby="tab-pieces" hidden>
+        <label class="field">All seats <select id="seatAll"></select></label>
+        <label class="field" id="tableAllRow">All tables <select id="tableAll"></select></label>
+        <label class="field" id="topAllRow" hidden>All table tops <select id="topAll"></select></label>
+        <div class="section-label" style="margin-top:18px">Each piece</div>
+        <div id="pieceList"></div>
+        <p class="hint">Change any single piece to a different model, or a table to a different top pattern. Tap a row to find that piece on the floor plan.</p>
+      </div>
+      <div role="tabpanel" id="pane-frame" aria-labelledby="tab-frame" hidden>
+        <p class="hint" style="margin:0 0 14px">One finish for the table and every frame in the group.</p>
+        <div class="swatches" id="colors"></div>
+      </div>
+      <div role="tabpanel" id="pane-fabric" aria-labelledby="tab-fabric" hidden>
+        <p class="hint" id="fabricNote" style="margin:0 0 8px">One fabric for every seat in the group.</p>
+        <div class="fabric-grid" id="fabrics"></div>
+      </div>
+      <div role="tabpanel" id="pane-quote" aria-labelledby="tab-quote" hidden>
+        <figure class="preview"><img id="quotePreview" alt="Preview of your furniture group"><figcaption id="quoteRef"></figcaption></figure>
+        <div class="section-label">Pieces</div>
+        <ul class="bom" id="bomList"></ul>
+        <div class="section-label">Finishes</div>
+        <div class="finish-rows" id="finishRows"></div>
+        <div class="section-label">Samples</div>
+        <label class="row sample-row" id="sampleFrameRow">
+          <span><small>Request a frame color sample</small><b id="sampleFrameText">—</b></span>
+          <span class="check"><input type="checkbox" id="sampleFrame"></span>
+        </label>
+        <label class="row sample-row" id="sampleFabricRow">
+          <span><small>Request a fabric sample</small><b id="sampleFabricText">—</b></span>
+          <span class="check"><input type="checkbox" id="sampleFabric"></span>
+        </label>
+        <div class="section-label" id="detailsLabel">Your details</div>
+        <div class="form-grid" id="quoteForm">
+          <label class="inp" id="qNameWrap"><span>Name *</span><input id="qName" autocomplete="name"></label>
+          <label class="inp"><span>Company</span><input id="qCompany" autocomplete="organization"></label>
+          <label class="inp"><span>Email</span><input id="qEmail" type="email" autocomplete="email"></label>
+          <label class="inp"><span>Phone</span><input id="qPhone" type="tel" autocomplete="tel"></label>
+          <label class="inp wide"><span>Project location</span><input id="qLocation" placeholder="City, state or ZIP"></label>
+          <label class="inp wide"><span>Notes</span><textarea id="qNotes" rows="3" placeholder="Extra quantities, timing, cushions, anything else"></textarea></label>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="cartBtn" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>
+            Add to quote request
+          </button>
+          <button class="btn primary" id="emailBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3z"/><path d="M3 7l9 6 9-6"/></svg>
+            Email for a quote
+          </button>
+          <button class="btn" id="pdfBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4v-7h16v7h-2"/><path d="M7 14h10v7H7z"/></svg>
+            Print / Save PDF
+          </button>
+          <button class="btn" id="linkBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+            Copy link
+          </button>
+        </div>
+        <p class="hint" id="quoteHint"></p>
+        <p class="hint" id="cartHint" hidden>Adds this to your quote request on our website, with the finishes you chose. You'll add your contact details on the next page. No payment is taken.</p>
+      </div>
+    </div>
+  </div>
+</details>
+
+<button id="cta" aria-label="Get a quote for this configuration">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/></svg>
+  Get a quote
+</button>
+
+<div id="dock" class="glass" role="toolbar" aria-label="View controls">
+  <div class="dock-head">
+    <span>View</span>
+    <button class="dk" id="dockToggle" title="Hide view controls" aria-label="Hide view controls" aria-expanded="true">
+      <svg class="ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      <svg class="ico-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+  </div>
+  <div class="dock-row">
+    <button class="dk on" id="rotBtn" title="Auto-rotate on / off" aria-label="Auto-rotate" aria-pressed="true">
+      <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+      <svg class="i-play" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <input class="speed" id="speed" type="range" min="0.25" max="4" step="0.05" value="1" aria-label="Rotation speed" title="Rotation speed">
+    <output id="speedOut">1.0×</output>
+    <button class="dk" id="dirBtn" title="Reverse rotation" aria-label="Reverse rotation direction">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
+    </button>
+  </div>
+  <div class="dock-main">
+    <div class="pad" aria-label="Pan">
+      <span></span>
+      <button class="dk" data-nav="up" title="Pan up" aria-label="Pan up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+      <span></span>
+      <button class="dk" data-nav="left" title="Pan left" aria-label="Pan left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="dk mid" id="resetBtn" title="Reset view" aria-label="Reset view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></button>
+      <button class="dk" data-nav="right" title="Pan right" aria-label="Pan right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <span></span>
+      <button class="dk" data-nav="down" title="Pan down" aria-label="Pan down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      <span></span>
+    </div>
+    <div class="col zoom" aria-label="Zoom">
+      <button class="dk" data-nav="in" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      <div class="zl">ZOOM</div>
+      <button class="dk" data-nav="out" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    </div>
+    <div class="col">
+      <button class="dk" id="fsBtn" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="dk" id="shotBtn" title="Save a picture" aria-label="Save a picture of the view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+      <button class="dk" id="stageBtn" title="Night / daylight stage" aria-label="Switch between night and daylight stage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </div>
+  </div>
+  <div class="views" aria-label="Camera presets">
+    <button data-view="front">Front</button>
+    <button data-view="side">Side</button>
+    <button data-view="top">Top</button>
+    <button data-view="iso" class="active">3/4</button>
+  </div>
+</div>
+
+<div id="printSheet" aria-hidden="true"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+/* ---------- Configuration ---------- */
+// Where the model files (GLB) and finish images are. Normally this page is uploaded into the same folder as them
+// (wp-content/uploads/configurator on the website), and then that folder is used automatically, on the dev site, the
+// live site or GitHub alike, with nothing to change. FILES_URL is only used when the page runs from anywhere else
+// (for example, its code pasted straight into a page): set it to the files' folder, ending in a slash.
+const FILES_URL = 'https://gobaluma.github.io/K-750/';   // GitHub test copy: models and textures come from the public repo
+const BASE = /\/configurator\/[^/]*$/i.test(location.pathname) || /github\.io$/i.test(location.hostname)
+  ? new URL('./', location.href).href : FILES_URL;
+// Model files are downloaded with this tag on the end. Change it (any new text, e.g. today's date) whenever you upload new
+// or replaced GLBs, so every browser fetches the new files at once instead of reusing an old copy for up to 10 minutes.
+const ASSET_VERSION = '2026-11-04c';
+
+// Where "Email for a quote" sends the request. Change it here if the address changes.
+const QUOTE_EMAIL = 'info@alumatech1.com';
+
+/* ---------- Table top patterns ---------- */
+// The CNC-cut top patterns. id = the pattern's code (it goes in the GLB file names and the share link),
+// name = what customers see. The first one is the default top. Add a pattern here, then upload its top GLB for each table.
+const TABLE_TOPS = [
+  { id: 'PLAIN',       name: 'Plain' },
+  { id: 'BOARDWALK',   name: 'Boardwalk' },
+  { id: 'CANDYCANE',   name: 'Candy Cane' },
+  { id: 'CROP_CIRCLE', name: 'Crop Circle' },
+  { id: 'CROSSFIRE',   name: 'Crossfire' },
+  { id: 'ENTERPRISE',  name: 'Enterprise' },
+  { id: 'FIRELIGHT',   name: 'Firelight' },
+  { id: 'HILO',        name: 'HiLo' },
+  { id: 'MAYAN',       name: 'Mayan' },
+  { id: 'SUNFIRE',     name: 'Sunfire' },
+];
+// Some of the patterns, in the order given (the first is that table's default): topsFrom('MAYAN', 'PLAIN')
+const topsFrom = (...ids) => ids.map(id => TABLE_TOPS.find(t => t.id === id)).filter(Boolean);
+
+// Dining tables are shown at this height (inches), so the dining chairs' arms (25.8" on the K-750 and K-7451) clear the
+// underside of the 1.8" deep table rim with about 2" to spare when the chairs are tucked in.
+const DINING_HEIGHT_IN = 29.5;
+
+/* ---------- Model library ---------- */
+// TO ADD A NEW PRODUCT: upload its GLB to BASE, then add one entry to this list. Nothing else needs to change.
+//   id                short unique code (shown in the Pieces tab and kept in the share link)
+//   name              what customers see
+//   type              'seat'  = can be placed in the seating positions
+//                     'table' = can be used as the table
+//   file              GLB file name in BASE. Mesh names matter: a mesh whose name (or parent's name) contains
+//                     "FABRIC" takes the group's fabric, every other mesh takes the frame finish.
+//   yawDeg            (optional) turn the model so its FRONT faces +Z. Seats must face front; 0 for the current models.
+//   fabricRepeat      (seats with fabric) how many times the swatch repeats over the model's fabric UVs.
+//                     1 for every current model: their fabric UVs run 0..1 once across each sling panel and
+//                     continue unstretched along it, so the weave is the same size on every product.
+//   normalizeFrameUV  true  = rescale the frame UVs on load so a finish has the same grain on every model.
+//                     false = the model's frame UVs are already at the reference scale (the K-750 defines it).
+//   tuck              (seats) true = a dining chair: it slides under a dining table's edge (see TUCK_UNDER).
+//   dining            (tables) true = a dining-height table that dining chairs tuck under. It is shown DINING_HEIGHT_IN
+//                     tall whatever height it was exported at (give sizeIn.h to use another height).
+//   tops              (tables, optional) interchangeable CNC-cut tops, so customers can pick a pattern. Each top is its own
+//                     GLB in BASE holding ONLY the top. Use the shared list, or only some of it; the first is the default:
+//                         tops: TABLE_TOPS
+//                         tops: topsFrom('MAYAN', 'PLAIN', 'SUNFIRE')
+//                     Each top's file is the table's size (its id without the letter prefix) + _ + the pattern id:
+//                     42_MAYAN.glb for the I-42, 36_CROP_CIRCLE.glb for the C-36, 42x76_HILO.glb for the I-42x76.
+//                     To use another file name for one table, give an object: { id: 'HILO', name: 'HiLo', file: 'x.glb' }
+//                     In the table's own GLB (the base), name the top's mesh or part TABLETOP (any case; "Table Top",
+//                     "TABLETOP-1" also work). It is removed and the chosen top is put exactly where it was, at its size,
+//                     so a top can be exported from its own part file with any origin. If the base has no TABLETOP, the
+//                     top is placed as exported, so it must then share the table assembly's origin and units.
+//   sizeIn            (optional) the real size in inches { w, d, h }, or just { h } to set only the height. The model is resized on load to match, whatever
+//                     units it was exported in. Leave it out to use the model exactly as exported.
+// The real size of every model, as exported, is printed in the browser console when the page loads.
+// GLBs may be meshopt-compressed (gltfpack -c); the decoder is set up in loadTemplate, so plain GLBs still load too.
+const MODELS = [
+  { id: 'K-750',   name: 'K-750 Kona Dining Chair',  type: 'seat',  file: 'K-750.glb',          fabricRepeat: 1,    normalizeFrameUV: false, tuck: true },
+  { id: 'K-761',   name: 'K-761 Kona Swivel Chair',  type: 'seat',  file: 'K-761.glb', yawDeg: 180, fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'K-7451',  name: 'K-7451 Kona High Back Dining Chair', type: 'seat', file: 'K-7451.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'K-7461',  name: 'K-7461 Kona High Back Swivel Chair', type: 'seat', file: 'K-7461.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'K-712',   name: 'K-712 Kona Lounge Chair',  type: 'seat',  file: 'K-712.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-7462',  name: 'K-7462 Kona High Back Loveseat', type: 'seat', file: 'K-7462.glb',    fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-7482',  name: 'K-7482 Kona High Back Sofa',     type: 'seat', file: 'K-7482.glb',    fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-762',   name: 'K-762 Kona Loveseat',      type: 'seat',  file: 'K-762.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-782',   name: 'K-782 Kona Sofa',          type: 'seat',  file: 'K-782.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-716',   name: 'K-716 Kona Chaise Lounge', type: 'seat',  file: 'K-716-7.glb',        fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-715',   name: 'K-715 Kona Ottoman',       type: 'seat',  file: 'K-715.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  // The I-42x76 and I-30x60 files end in -1: WordPress renames an upload whose name ends in -<number>x<number>
+  // (it takes it for an image thumbnail), so on the website they are I-42x76-1.glb and I-30x60-1.glb.
+  // Tables with interchangeable tops: the first top listed is the default (Mayan on every table). Add a pattern to a table's
+  // list once its top GLB is uploaded.
+  { id: 'I-42',    name: 'I-42 Round Dining Table',  type: 'table', file: 'I-42.glb',           normalizeFrameUV: false, dining: true,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+  { id: 'I-42x76', name: 'I-42x76 Oval Dining Table',type: 'table', file: 'I-42x76.glb',      normalizeFrameUV: false, dining: true,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CROP_CIRCLE', 'HILO', 'SUNFIRE') },
+  { id: 'I-30x60', name: 'I-30x60 Dining Table',     type: 'table', file: 'I-30x60.glb',      normalizeFrameUV: false, dining: true,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'SUNFIRE') },
+  { id: 'C-36',    name: 'C-36 Round Dining Table',  type: 'table', file: 'C-36.glb',           normalizeFrameUV: false, dining: true,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+  { id: 'C-54',    name: 'C-54 Round Dining Table',  type: 'table', file: 'C-54.glb',           normalizeFrameUV: false, dining: true,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'HILO', 'SUNFIRE') },
+  { id: 'I-23',    name: 'I-23 End Table',           type: 'table', file: 'I-23.glb',           normalizeFrameUV: false,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+  { id: 'I-18',    name: 'I-18 Side Table',          type: 'table', file: 'I-18.glb',           normalizeFrameUV: false,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+  // I-47: its tops are ready; remove the // once I-47.glb (the base, with its TABLETOP part) and 47_PLAIN.glb are uploaded.
+  // { id: 'I-47',    name: 'I-47 Round Dining Table',  type: 'table', file: 'I-47.glb',           normalizeFrameUV: false, dining: true,
+  //   tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+];
+
+// Turn every table's `tops` list into { id, name, file } entries (see `tops` above).
+// A top's file starts with the table's size: the model id without its letter prefix ('I-42' -> '42', 'C-36' -> '36').
+const topSize = id => id.replace(/^[A-Za-z]+-/, '');
+const topSlug = t => String(t).trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+MODELS.forEach(m => {
+  if (!Array.isArray(m.tops) || !m.tops.length) { delete m.tops; return; }   // (each table gets its own copy below)
+  m.tops = m.tops.map(t => {
+    const o = typeof t === 'string' ? { name: t } : { ...t };
+    o.id = topSlug(o.id || o.name);
+    o.name = o.name || o.id;
+    o.file = o.file || `${topSize(m.id)}_${o.id}.glb`;
+    return o;
+  });
+});
+// The top a table piece shows: the one chosen, or the model's first (default) top. null for a table without tops.
+const topOf = (m, topId) => (m && m.tops) ? (m.tops.find(t => t.id === topId) || m.tops[0]) : null;
+// Templates are kept per model and top: 'I-47|WAVE'. Models without tops use their plain id.
+const tplKey = (id, topId) => { const t = topOf(modelById(id), topId); return t ? `${id}|${t.id}` : id; };
+
+
+/* ---------- Surfaces ---------- */
+const FRAME_ROUGHNESS = 0.5;     // painted / powder-coated metal. 0 = mirror, 1 = fully matte
+const FABRIC_ROUGHNESS = 0.9;    // 1 = fully matte
+const WEAVE_BUMP = 1.5;          // 0 turns the fabric relief off, ~1 is subtle, 3+ is strong
+
+// Frame finishes tile FRAME_TEXTURE_REPEAT times per UV unit, and frame UVs are rescaled on load to FRAME_UV_PER_METRE
+// UV units per metre (the K-750's value), so a finish has the same real-world grain everywhere: 1 / (32 x 0.2316) = 135 mm.
+const FRAME_TEXTURE_REPEAT = 32;
+const FRAME_UV_PER_METRE = 0.2316;
+
+/* ---------- Finishes ---------- */
+const COLORS = [
+  // roughness (optional): the finish's sheen, 0 = mirror, 1 = flat. Leave it out for the standard powder coat
+  // (FRAME_ROUGHNESS). reflect (optional): how strongly the finish mirrors its surroundings, 1 = standard.
+  // shine (optional): draw a highlight on the swatch.
+  { label: 'Matte Black', hex: '#141414', roughness: 0.95, reflect: 0.25 },   // flat: no sheen
+  { label: 'Gloss Black', hex: '#141414', shine: true },                      // same black, with the standard sheen of every solid colour
+  { label: 'Graphite', hex: '#383838' },
+  { label: 'Oil Rubbed Bronze', hex: '#3b3535' },
+  { label: 'Adobe', hex: '#947a64' },
+  { label: 'White', hex: '#FFFFFF' },
+  { label: 'Ivory',  hex: '#e4e2cb' },
+  { label: 'Vanilla',  hex: '#fcfee4' },
+  { label: 'Yellow',  hex: '#fcf28a' },
+  { label: 'Citron',  hex: '#fcfab4' },
+  { label: 'Driftwood',  hex: '#d4ce9c' },
+  { label: 'Camel',  hex: '#fccd9c' },
+  { label: 'Terracotta', hex: '#672d22' },
+  { label: 'Dark Green', hex: '#013220' },
+  { label: 'French Blue', hex: '#a4b4cc' },
+  { label: 'Royal Blue', hex: '#0e5895' },
+  { label: 'Navy Blue', hex: '#0a1d34' },
+  { label: 'Grey', hex: '#a4a6a4' },
+  { label: 'Jade', hex: '#267965' },
+  { label: 'Clover', hex: '#86aa9e' },
+  { label: 'Leisure Brown', hex: '#441214' },
+  { label: 'Putty', hex: '#b5ad9a' },
+  { label: 'Coffee', hex: '#644b4c' },
+  { label: 'Mistletoe', hex: '#899a7c' },
+  { label: 'Papaya', hex: '#fccab4' },
+  { label: 'Holly Green', hex: '#4c5f54' },
+  { label: 'Sherwood Green', hex: '#113804' },
+  { label: 'Deepwater Blue', hex: '#0b5558' },
+  { label: 'Forest Green', hex: '#1d2b2b' },
+  { label: 'Dove', hex: '#c8c4bb' },
+  { label: 'Bengal Silver', hex: '#939393' },
+  { label: 'Textured Silver', hex: '#a4a4a4' },
+  { label: 'Anthracite', texture: BASE + 'ANTHRACITE.jpg', textureThumb: 'ANTHRACITE.jpg'},
+  { label: 'Granite', texture: BASE + 'GRANITE.jpg', textureThumb: 'GRANITE.jpg'},
+  { label: 'Luna', texture: BASE + 'LUNA.jpg', textureThumb: 'LUNA.jpg'},
+  { label: 'Sahara', texture: BASE + 'SAHARA.jpg', textureThumb: 'SAHARA.jpg'},
+  { label: 'Silver Bronze Hammertone', texture: BASE + 'SLVBRZHAMMERTONE.jpg', textureThumb: 'SLVBRZHAMMERTONE.jpg'},
+  { label: 'Sonora', texture: BASE + 'SONORA.jpg', textureThumb: 'SONORA.jpg'},
+  { label: 'Speckled Pearl', texture: BASE + 'SPECKLED PEARL.jpg', textureThumb: 'SPECKLED PEARL.jpg'},
+  { label: 'Textured Pewter', texture: BASE + 'TEXTURED PEWTER.jpg', textureThumb: 'TEXTURED PEWTER.jpg'},
+];
+
+const FABRICS = [
+  { id: 'putty', label: '111 Putty',          file: '111_putty_shade.png' },
+  { id: 'green', label: '112 Forest Green',   file: '112_forest_green.png' },
+  { id: 'blue',  label: '114 Wedgewood Blue', file: '114_wedgewood_blue.png' },
+  { id: 'teal',  label: '118 Teal Shade',     file: '118_teal_shade.png' },
+  { id: 'grey',  label: '121 Grey',           file: '121_Grey.png' },
+  { id: 'eliz',  label: '182 Elizabeth',      file: '182_Elizabeth.png' },
+  { id: 'kozoa', label: '254 Kozo Abalone',   file: '254_kozo_abalone.png' },
+  { id: 'kozof', label: '255 Kozo Fossil',    file: '255_kozo_fossil.png' },
+  { id: 'kozoj', label: '256 Kozo Jewel',     file: '256_kozo_jewel.png' },
+  { id: 'intrc', label: '259 Interlock Calypso', file: '259_interlock_calypso.png' },
+  { id: 'intrl', label: '260 Interlock Linen', file: '260_interlock_linen.png' },
+  { id: 'pacif', label: '261 Pacific',        file: '261_pacific.png' },
+  { id: 'lirb',  label: '262 Lir Breeze',     file: '262_lir_breeze.png' },
+  { id: 'dayt',  label: '263 Daytripper Denim', file: '263_daytripper_denim.png' },
+  { id: 'cococ', label: '264 Coco Confetti',  file: '264_COCO_CONFETTI.png' },
+  { id: 'cocoh', label: '265 Coco Hightide',  file: '265_coco_hightide.png' },
+  { id: 'tempo', label: '267 Tempo Spearmint', file: '267_TEMPO_SPEARMINT.png' },
+  { id: 'veran', label: '268 Veranda Nutmeg', file: '268_VERANDA_NUTMEG.png' },
+  { id: 'blazs', label: '270 Blazer Surf',    file: '270_BLAZER_SURF.png' },
+  { id: 'blazz', label: '271 Blazer Zinc',    file: '271_BLAZER_ZINC.png' },
+  { id: 'bwav',  label: '272 Broadway Wave',  file: '272_BROADWAY_WAVE.png' },
+  { id: 'madtp', label: '273 Madras Tweed Putty', file: '273_MADRAS_TWEED_PUTTY.png' },
+  { id: 'creel', label: '290 Creel Birch',    file: '290_CREEL_BIRCH.png' },
+  { id: 'jazzy', label: '297 Jazzy Raven',    file: '297_JAZZY_RAVEN.png' },
+  { id: 'konya', label: '300 Konya Player',   file: '300_KONYA_PLAYA.png' },
+  { id: 'burke', label: '322 Burke Rivera',   file: '322_BURKE_RIVERA.png' },
+  { id: 'whot',  label: '349 White Hot',      file: '349_WHITE_HOT.png' },
+  { id: 'cane',  label: '385 Cane Aluminum',  file: '385_CANE_ALUMINUM.png' },
+  { id: 'bshad', label: '420 Black Shade',    file: '420_black_shade.png' },
+  { id: 'ntwed', label: '433 New Tweed Indigo', file: '433_NEW_TWEED_INDIGO.png' },
+  { id: 'ptwed', label: '434 Pria Tweed Indigo', file: '434_PRIA_TWEED_INDIGO.png' },
+  { id: 'spast', label: '466 Spa Stripe',     file: '466_SPA_STRIPE.png' },
+  { id: 'fesco', label: '474 Fesco',          file: '474_FESCO.png' },
+  { id: 'crane', label: '538 Cane Grass Cloth', file: '538_CANE_GRASS_CLOTH.png' },
+  { id: 'Metw',  label: '556 Metallica White', file: '556_METALLICA_WHITE.png' },
+  { id: 'montb', label: '557 Montego Brown',  file: '557_MONTEGO_BROWN.png' },
+  { id: 'Straw', label: '558 Straw Mat Blue', file: '558_STRAW_MAT_BLUE.png' },
+  { id: 'tiki',  label: '559 Tiki Glow',      file: '559_TIKI_GLOW.png' },
+  { id: 'wctwd', label: '561 Tweed Pearlt',   file: '561_W_C__TWEED_PEARLY.png' },
+  { id: 'plata', label: '703 Plata',          file: '703_PLATA.png' },
+  { id: 'aquam', label: '908 Aqua Marine',    file: '908_AQUA_MARINE.png' },
+  { id: 'chplt', label: '913 Charm Platinum', file: '913_CHARM_PLATINUM.png' },
+  { id: 'fmap',  label: '915 Fusion Maple',   file: '915_FUSHION_MAPLE.png' },
+  { id: 'brain', label: '916 Braque Rain',    file: '916_BRAQUE_RAIN.png' },
+  { id: 'bgrap', label: '917 Braque Graphite', file: '917_BRAQUE_GRAPHITE.png' },
+  { id: 'madts', label: '918 Madras Tweed Surf', file: '918_MADRAS_TWEED_SURF.png' },
+  { id: 'owens', label: '920 Owen Stripe Surf', file: '920_OWEN_STRIPE_SURF.png' },
+  { id: 'shelb', label: '926 Shelby Cadet Blue', file: '926_SHELBY_CADET_BLUE.png' },
+  { id: 'indsl', label: '928 Indentation Silver', file: '928_INDENTATION_SILVER.png' },
+  { id: 'elise', label: '932 Elise Stripe',   file: '932_ELISE_STRIPE_CHES.png' },
+  { id: 'fsden', label: '933 Free Spirit Denim', file: '933_FREE_SPIRIT_DENIM.png' },
+  { id: 'carc',  label: '934 Caribbean Cane', file: '934_CARIBBEAN_CANE.png' },
+  { id: 'yelsh', label: 'B-07 Yellow Shade',  file: 'B-07_YELLOW_SHADE.png' },
+  { id: 'royb',  label: 'B-10 Royal Blue',    file: 'B-10_royal_blue.png' },
+  { id: 'dupo',  label: 'B-63 Dupioni Poolside', file: 'B-63_DUPIONI_POOLSIDE.png' },
+  { id: 'rawl',  label: 'B-69 Raw Linen',     file: 'B-69_RAW_LINEN.png' },
+  { id: 'natu',  label: 'B-83 Natura',        file: 'B-83_NATURA.png' },
+  { id: 'tropi', label: 'B-84 Tropico',       file: 'B-84_TROPICO.png' },
+  { id: 'ches',  label: 'C-32 Chesterfield',  file: 'C-32_CHESTERFIELD.png' },
+  { id: 'aquaf', label: 'C-71 Aquafino',      file: 'C-71_AQUAFINO.png' },
+  { id: 'delrs', label: 'C-76 Delray Stripe', file: 'C-76_DELRAY_STRIPE.png' },
+  { id: 'vblu',  label: 'C-81 Valencia Blue', file: 'C-81_VALENCIA_BLUE.png' },
+  { id: 'hoff',  label: 'C-82 Hoffman',       file: 'C-82_HOFFMAN.png' },
+  { id: 'seab',  label: 'C-83 Seabreeze',     file: 'C-83_SEABREEZE.png' },
+  { id: 'madn',  label: 'D-46 Madera Natural', file: 'D-46_MADERA_NATURAL.png' },
+  { id: 'cwicb', label: 'D-55 Cane Wicker Balsa', file: 'D-55_CANE_WICKER_BALSA.png' },
+  { id: 'cwicd', label: 'D-56 Cane Wicker Desert', file: 'D-56_CANE_WICKER_DESERT.png' },
+  { id: 'dwood', label: 'D-70 Driftwood',     file: 'D-70_DRIFTWOOD.png' },
+  { id: 'madtu', label: 'E-11 Madera Turquesa', file: 'E-11_MADERA_TURQUESA.png' },
+  { id: 'cwic',  label: 'EC1 Cane Wicker Coral', file: 'EC1_CANE_WICKER_CORAL.png' },
+  { id: 'dusap', label: 'L96 Dupioni Sapphire', file: 'L96_DUPIONI_SAPPHIRE.png' },
+  { id: 'ogawo', label: 'OGA White Oyster', file: 'OGA_WHITE_OYSTER.png' },
+].map(f => ({
+  ...f,
+  url: BASE + encodeURIComponent(f.file),                                            // full texture, loaded on click
+  thumb: BASE + 'thumbs/' + encodeURIComponent(f.file.replace(/\.png$/i, '.jpg')),  // small preview (see make_thumbs.py)
+}));
+
+/* ---------- Layout patterns ---------- */
+// Pure geometry, no three.js. Every piece is described by its footprint fp = { w, d }: w = width (X), d = depth (Z),
+// measured with the piece facing +Z. A placement is { x, z, rot }: position on the floor and a turn about the vertical
+// axis. rot = 0 faces +Z (toward the viewer); a piece turned by rot faces (sin rot, cos rot).
+const GAP_TABLE = 0.10;      // clear space between a table edge and the front of a seat (m)
+const GAP_SEATS = 0.25;      // clear space between neighbouring seats in a row (m)
+const EMPTY_CENTRE_R = 0.45; // radius left open in the middle when no table is chosen (m)
+const TUCK_UNDER = 0.15;     // how far the front of a dining chair slides under a dining table's edge (m, about 6")
+
+// Gap between the table edge and the front of a seat: negative when a dining chair tucks under a dining table.
+const seatGap = (table, seat) => table && table.tpl.def.dining && seat.tpl.def.tuck ? -TUCK_UNDER : GAP_TABLE;
+
+const tableSpan = table => table ? Math.max(table.fp.w, table.fp.d) : 0;
+// Distance from the table's centre to its edge in direction phi (measured from +Z toward +X). Round tables keep the
+// plain radius; long tables (like the I-42x76) are treated as an oval, so seats hug the sides instead of the ends.
+function tableEdge(table, phi) {
+  if (!table) return EMPTY_CENTRE_R;
+  const a = table.fp.w / 2, b = table.fp.d / 2;
+  if (Math.abs(a - b) < 0.1 * Math.max(a, b)) return Math.max(a, b);
+  return 1 / Math.hypot(Math.sin(phi) / a, Math.cos(phi) / b);
+}
+
+// Is the table long (rectangular or oval) rather than round?
+const isLongTable = table => !!table && Math.abs(table.fp.w - table.fp.d) >= 0.1 * Math.max(table.fp.w, table.fp.d);
+
+// Seats around a long table (its long side runs along X). The table is treated as a racetrack: straight long sides with
+// round ends. Seats sit square to the long sides, side by side, and the end seats face straight down the table.
+// sweepDeg 360 = all the way round; less = the back side and the ends only, so the front stays open.
+function arrangeLong(table, seats, sweepDeg) {
+  const n = seats.length, L = table.fp.w, W = table.fp.d, R = W / 2, straight = Math.max(0, L - W) / 2;
+  // How far the table edge is from the long axis at position x along it (smaller on the round ends).
+  const edgeAt = x => Math.abs(x) <= straight ? R : Math.sqrt(Math.max(0, R * R - (Math.abs(x) - straight) ** 2));
+  let back, front, ends;
+  if (sweepDeg >= 360) {
+    ends = n % 2 ? 1 : (n >= 6 ? 2 : 0);                   // 4 = 2 + 2, 5 = 2 + 2 + one end, 6 = 2 + 2 + both ends
+    back = Math.ceil((n - ends) / 2); front = n - ends - back;
+  } else {
+    ends = n >= 3 ? 2 : 0; back = n - ends; front = 0;
+  }
+  const out = { tables: [{ x: 0, z: 0, rot: 0 }], seats: [] };
+  let k = 0, sideReach = 0;
+  // A row of seats along one long side, centred, each square to the edge.
+  const row = (count, sign) => {
+    const list = seats.slice(k, k + count); k += count;
+    const pitch = Math.max(...list.map(s => s.fp.w), 0) + 0.08;
+    list.forEach((s, i) => {
+      const x = (i - (count - 1) / 2) * pitch;
+      const z = sign * (edgeAt(x) + seatGap(table, s) + s.fp.d / 2);
+      out.seats.push({ x, z, rot: sign < 0 ? 0 : Math.PI });
+      sideReach = Math.max(sideReach, Math.abs(x) + s.fp.w / 2);
+    });
+  };
+  row(back, -1);
+  row(front, 1);
+  // End seats face down the table, pushed out far enough to clear the corner seats of the long sides.
+  [-1, 1].slice(0, ends).forEach(sign => {
+    const s = seats[k++];
+    const tucked = L / 2 + seatGap(table, s) + s.fp.d / 2;
+    const clear = sideReach + 0.05 + s.fp.d / 2;
+    out.seats.push({ x: sign * Math.max(tucked, back + front ? clear : tucked), z: 0, rot: sign < 0 ? Math.PI / 2 : -Math.PI / 2 });
+  });
+  return out;
+}
+
+// Seats around a table, all turned to face its centre. sweepDeg 360 = full ring, less = open arc centred on the back
+// (the side away from the viewer), so the front of the group stays open. Long tables use arrangeLong instead.
+function arrangeRing(table, seats, sweepDeg) {
+  if (isLongTable(table)) return arrangeLong(table, seats, sweepDeg);
+  const n = seats.length, angles = [];
+  let step = Math.PI;
+  if (sweepDeg >= 360) {
+    const start = n % 2 ? Math.PI : Math.PI / 2;          // odd: one seat at the back. even: seats on the axes
+    step = 2 * Math.PI / n;
+    for (let k = 0; k < n; k++) angles.push(start + k * step);
+  } else {
+    const span = Math.min(sweepDeg * Math.PI / 180, (n - 1) * Math.PI / 3);   // few seats sit closer together
+    step = n > 1 ? span / (n - 1) : Math.PI;
+    for (let k = 0; k < n; k++) angles.push(Math.PI + (n === 1 ? 0 : -span / 2 + k * step));
+  }
+  // Push the ring outward until the inner corners of neighbouring seats clear each other.
+  const wMax = Math.max(...seats.map(s => s.fp.w));
+  const rhoMin = n > 1 && step < Math.PI ? (wMax / 2 + 0.03) / Math.tan(step / 2) : 0;
+  return {
+    tables: table ? [{ x: 0, z: 0, rot: 0 }] : [],
+    seats: seats.map((s, k) => {
+      const phi = angles[k];                              // measured from +Z toward +X
+      const r = Math.max(tableEdge(table, phi) + seatGap(table, s) + s.fp.d / 2, rhoMin + s.fp.d / 2);
+      return { x: r * Math.sin(phi), z: r * Math.cos(phi), rot: phi + Math.PI };
+    })
+  };
+}
+
+// Turn a placement made around (0, 0) by `ang` and move it to (cx, cz). Same rotation convention as `rot`.
+function placeAt(p, cx, cz, ang) {
+  const c = Math.cos(ang), s = Math.sin(ang);
+  return { x: cx + p.x * c + p.z * s, z: cz - p.x * s + p.z * c, rot: p.rot + ang };
+}
+
+// Café sets: a table for every two seats, the two seats facing each other across it. The sets are scattered on a
+// staggered grid, each turned a little differently, like tables on a café terrace.
+const CAFE_AISLE = 0.45;     // clear space kept between neighbouring sets (m)
+function arrangeCafe(table, seats) {
+  const sets = [];
+  for (let i = 0; i < seats.length; i += 2) sets.push(seats.slice(i, i + 2));
+  const Rt = tableEdge(table, 0);
+  // Every set fits inside a circle of this radius, so sets never touch however they are turned.
+  let reach = table ? Math.hypot(table.fp.w, table.fp.d) / 2 : 0;
+  seats.forEach(s => { reach = Math.max(reach, Math.hypot(s.fp.w / 2, Rt + seatGap(table, s) + s.fp.d)); });
+  const pitch = 2 * reach + CAFE_AISLE;
+  const cols = Math.ceil(Math.sqrt(sets.length));
+  const out = { tables: [], seats: [] };
+  sets.forEach((set, k) => {
+    const row = Math.floor(k / cols), col = k % cols;
+    const cx = (col + (row % 2) * 0.5) * pitch, cz = row * pitch * 0.87;
+    const ang = (k % 2 ? Math.PI / 2 : 0) + (k % 3 - 1) * 0.22;             // alternate the sets, with a slight twist
+    if (table) out.tables.push(placeAt({ x: 0, z: 0, rot: 0 }, cx, cz, ang));
+    set.forEach((s, side) => {
+      const z = Rt + seatGap(table, s) + s.fp.d / 2;
+      out.seats.push(placeAt({ x: 0, z: side ? z : -z, rot: side ? Math.PI : 0 }, cx, cz, ang));
+    });
+  });
+  return out;
+}
+
+// Sunburst: seats fanned out from a shared centre like rays, each facing outward, with a table between each pair.
+// Up to 6 seats make a fan that opens toward the viewer; 7 or more close into a full circle.
+const SUN_STEP_DEG = 52;     // angle between neighbouring seats in the fan
+function arrangeSunburst(table, seats, between) {
+  const n = seats.length, span = tableSpan(table), useTable = !!(table && between);
+  const full = n >= 7;
+  const step = full ? 2 * Math.PI / n : SUN_STEP_DEG * Math.PI / 180;
+  const angles = seats.map((_, k) => full ? k * step : (k - (n - 1) / 2) * step);
+  // Inner radius: far enough out that the seats' inner ends, and the tables between them, have room.
+  const wMax = Math.max(...seats.map(s => s.fp.w));
+  const need = wMax + (useTable ? span + 0.24 : GAP_SEATS);
+  const R0 = n > 1 ? Math.max(0.35, need / (2 * Math.sin(step / 2))) : 0.35;
+  const out = { tables: [], seats: [] };
+  seats.forEach((s, k) => {
+    const phi = angles[k], r = R0 + s.fp.d / 2;
+    out.seats.push({ x: r * Math.sin(phi), z: r * Math.cos(phi), rot: phi });
+  });
+  if (useTable && n === 1) {
+    out.tables.push({ x: wMax / 2 + 0.12 + span / 2, z: R0 + span / 2 + 0.05, rot: 0 });   // beside a lone seat
+  } else if (useTable) {
+    const rt = R0 + span / 2 + 0.05;
+    angles.slice(0, full ? n : n - 1).forEach(a => {
+      const phi = a + step / 2;
+      out.tables.push({ x: rt * Math.sin(phi), z: rt * Math.cos(phi), rot: phi });
+    });
+  }
+  return out;
+}
+
+// Seats side by side, backs lined up, all facing the viewer. With a table chosen it goes between each pair of seats
+// (or beside a single seat).
+function arrangeRow(table, seats, between) {
+  const span = tableSpan(table), useTable = !!(table && between), gap = useTable ? span + 0.24 : GAP_SEATS;
+  const out = { tables: [], seats: [] };
+  let x = 0;
+  seats.forEach((s, i) => {
+    out.seats.push({ x: x + s.fp.w / 2, z: s.fp.d / 2, rot: 0 });
+    const next = seats[i + 1];
+    if (next) {
+      if (useTable) out.tables.push({ x: x + s.fp.w + gap / 2, z: Math.min(span / 2 + 0.05, Math.min(s.fp.d, next.fp.d) / 2), rot: 0 });
+      x += s.fp.w + gap;
+    } else if (useTable && seats.length === 1) {
+      out.tables.push({ x: x + s.fp.w + 0.12 + span / 2, z: Math.min(span / 2 + 0.05, s.fp.d / 2), rot: 0 });
+    }
+  });
+  return out;
+}
+
+// ---- Lounge patterns (sofa, loveseat, lounge chair, ottoman). Each one has a fixed set of seats in a set order, so
+// seat k always plays the same part (seat 0 = the sofa across the back, and so on). Everything is worked out from the
+// footprints, so swapping a model on the Pieces tab (say, a loveseat for the sofa) still lays out cleanly.
+// `useTable` (the table switch) adds the side tables; without it the seats close up with a small gap.
+const LOUNGE_GAP = 0.08;     // clear space between a seat and a side table beside it (m, about 3")
+const sideTables = (table, between) => !!(table && between);
+
+// L-shape: seat 0 across the back facing the viewer, seat 1 down the left side facing in, its back on the left.
+// Side tables at both open ends and in the corner.
+function arrangeL(table, seats, between) {
+  const [A, B] = seats, useT = sideTables(table, between), s = useT ? tableSpan(table) : 0, g = useT ? LOUNGE_GAP : 0.12;
+  const out = { tables: [], seats: [{ x: 0, z: 0, rot: 0 }] };
+  const back = -A.fp.d / 2;                                    // back line of the sofa
+  if (!B) return out;
+  // The corner is a square as deep as the seats (or the table, if bigger), with the corner table in its middle.
+  // The side seat, turned to face +X (its depth along X, its width along Z), sits just outside the sofa's end and
+  // starts in front of the corner square, so the two seats never meet.
+  const cx = useT ? Math.max(s, B.fp.d) : B.fp.d, cz = useT ? Math.max(s, A.fp.d) : A.fp.d;
+  const bx = -A.fp.w / 2 - g - cx + B.fp.d / 2;
+  const bz = back + cz + g + B.fp.w / 2;
+  out.seats.push({ x: bx, z: bz, rot: Math.PI / 2 });
+  if (useT) {
+    out.tables.push({ x: -A.fp.w / 2 - g - cx / 2, z: back + cz / 2, rot: 0 });             // corner
+    out.tables.push({ x: A.fp.w / 2 + g + s / 2, z: back + cz / 2, rot: 0 });               // sofa's open end
+    out.tables.push({ x: bx, z: bz + B.fp.w / 2 + g + s / 2, rot: 0 });                     // side seat's open end
+  }
+  return out;
+}
+
+// U-shape: seat 0 across the back, seats 1 and 2 facing each other from the left and right, set forward of the
+// back seat so the middle stays open. Side tables at the back seat's two ends.
+const U_OPEN = 0.9;
+const U_CLEAR = 0.05;         // gap between the sofa's end and each side chair's front (m, about 2")          // least clear space between the two side seats' fronts (m, about 35")
+function arrangeU(table, seats, between) {
+  const [A, ...sides] = seats, useT = sideTables(table, between), s = useT ? tableSpan(table) : 0, g = useT ? LOUNGE_GAP : 0;
+  const out = { tables: [], seats: [{ x: 0, z: 0, rot: 0 }] };
+  // Outer edge of the end tables (or the sofa), widened if needed to keep U_OPEN clear between the chair fronts.
+  const sideD = Math.max(0, ...sides.slice(0, 2).map(S => S.fp.d));
+  // U_CLEAR: the side chairs' fronts sit just past the sofa's ends instead of over its end seats.
+  const back = -A.fp.d / 2, endX = Math.max(A.fp.w / 2 + g + s, sideD + U_OPEN / 2, A.fp.w / 2 + U_CLEAR + sideD);
+  // End tables line up with the sofa's front edge (not its back), so they sit within reach of the end seats.
+  const tZ = Math.max(back + s / 2, A.fp.d / 2 - s / 2);
+  if (useT) [-1, 1].forEach(side => out.tables.push({ x: side * (A.fp.w / 2 + g + s / 2), z: tZ, rot: 0 }));
+  sides.slice(0, 2).forEach((S, k) => {
+    const side = k ? 1 : -1;
+    const x = side * (endX - S.fp.d / 2);                       // back of the chair lines up with the outer edge
+    // Start in front of the back seat's front edge where the chair overlaps it, else in front of the end table.
+    const overlaps = Math.abs(x) - S.fp.d / 2 < A.fp.w / 2;
+    const z0 = Math.max(overlaps ? A.fp.d / 2 + 0.15 : back, useT ? tZ + s / 2 + g + 0.02 : back);
+    out.seats.push({ x, z: z0 + S.fp.w / 2, rot: -side * Math.PI / 2 });
+  });
+  return out;
+}
+
+// Facing sofas: seat 0 at the back facing the viewer, seat 1 in front turned round to face it, with room between
+// for a conversation (or a coffee table later). Side tables at both ends of each seat.
+const FACING_GAP = 1.05;     // clear space between the two seat fronts (m, about 41")
+function arrangeFacing(table, seats, between) {
+  const [A, B] = seats, useT = sideTables(table, between), s = useT ? tableSpan(table) : 0;
+  const out = { tables: [], seats: [{ x: 0, z: 0, rot: 0 }] };
+  const ends = (S, z) => { if (useT) [-1, 1].forEach(side => out.tables.push({ x: side * (S.fp.w / 2 + LOUNGE_GAP + s / 2), z, rot: 0 })); };
+  ends(A, 0);
+  if (!B) return out;
+  const zb = A.fp.d / 2 + FACING_GAP + B.fp.d / 2;
+  out.seats.push({ x: 0, z: zb, rot: Math.PI });
+  ends(B, zb);
+  return out;
+}
+
+// Fireside pair: seats 0 and 2 are lounge chairs angled in toward each other, seats 1 and 3 the ottomans in front
+// of them, with a side table between the chairs.
+const FIRESIDE_TURN = 15 * Math.PI / 180;   // how far each chair is turned toward the middle
+function arrangeFireside(table, seats, between) {
+  const useT = sideTables(table, between), s = useT ? tableSpan(table) : 0;
+  const pairs = [[seats[0], seats[1]], [seats[2], seats[3]]].filter(p => p[0]);
+  const C = pairs[0][0];
+  const out = { tables: [], seats: [] };
+  let half = (useT ? s / 2 + 0.12 : 0.2) + C.fp.w / 2;           // centre line to each chair's centre
+  // Spread the chairs until the ottomans in front have a clear gap between them.
+  for (let tries = 0; tries < 40; tries++) {
+    const ott = pairs[0][1];
+    if (!ott || pairs.length < 2) break;
+    const reach = C.fp.d / 2 + 0.08 + ott.fp.d / 2;
+    const ox = -half + Math.sin(FIRESIDE_TURN) * reach;
+    const ext = (ott.fp.w * Math.cos(FIRESIDE_TURN) + ott.fp.d * Math.sin(FIRESIDE_TURN)) / 2;
+    if (ox + ext < -0.15) break;
+    half += 0.03;
+  }
+  pairs.forEach(([chair, ott], k) => {
+    const side = pairs.length === 1 ? 0 : (k ? 1 : -1);
+    const rot = -side * FIRESIDE_TURN;                         // the left chair turns right, the right chair turns left
+    const cx = side * half;
+    out.seats.push({ x: cx, z: 0, rot });
+    if (ott) {
+      const reach = chair.fp.d / 2 + 0.08 + ott.fp.d / 2;
+      out.seats.push({ x: cx + Math.sin(rot) * reach, z: Math.cos(rot) * reach, rot });
+    }
+  });
+  if (useT) out.tables.push(pairs.length > 1 ? { x: 0, z: -C.fp.d / 4, rot: 0 }
+                                             : { x: half + C.fp.w / 2 + 0.12 + s / 2, z: -C.fp.d / 4, rot: 0 });
+  return out;
+}
+
+// defaults (optional): the table and seat model a pattern switches to when it is picked, with `def` seats.
+//   seats: a list of seat models in order, for patterns with a fixed set of pieces (min = max).
+// tableLabel (optional): the wording of the table switch for that pattern.
+const LAYOUTS = [
+  { id: 'around', name: 'Around a table', min: 1, max: 8, def: 4, defaults: { table: 'I-42', seat: 'K-750' },
+    hint: 'Seats spaced evenly all the way around the table, each facing it.',
+    arrange: (t, s) => arrangeRing(t, s, 360) },
+  { id: 'cafe', name: 'Café sets', min: 1, max: 8, def: 4, defaults: { table: 'I-42', seat: 'K-750' },
+    hint: 'Bistro sets scattered across the terrace: a table for every two seats.',
+    arrange: (t, s) => arrangeCafe(t, s) },
+  { id: 'sunburst', name: 'Sunburst', min: 1, max: 8, def: 4, usesBetween: true, defaults: { table: 'I-18', seat: 'K-716' },
+    hint: 'Seats fanned out like rays of the sun, with a table between each pair. 7 or more close the circle.',
+    arrange: (t, s, o) => arrangeSunburst(t, s, o.between) },
+  { id: 'row', name: 'Side by side', min: 1, max: 6, def: 2, usesBetween: true, defaults: { table: 'I-18', seat: 'K-716' },
+    hint: 'Seats in a row, all facing the same way, with the table between them.',
+    arrange: (t, s, o) => arrangeRow(t, s, o.between) },
+  { id: 'lshape', name: 'L-shape', min: 2, max: 2, def: 2, usesBetween: true, tableLabel: 'Side tables at the ends and corner',
+    defaults: { table: 'I-23', seats: ['K-782', 'K-762'] },
+    hint: 'Sofa across the back and loveseat down the side, with side tables at both ends and in the corner.',
+    arrange: (t, s, o) => arrangeL(t, s, o.between) },
+  { id: 'ushape', name: 'U-shape', min: 3, max: 3, def: 3, usesBetween: true, tableLabel: 'Side tables at the sofa ends',
+    defaults: { table: 'I-23', seats: ['K-782', 'K-712', 'K-712'] },
+    hint: 'Sofa across the back with a lounge chair on each side facing in, and side tables at the sofa ends.',
+    arrange: (t, s, o) => arrangeU(t, s, o.between) },
+  { id: 'facing', name: 'Facing sofas', min: 2, max: 2, def: 2, usesBetween: true, tableLabel: 'Side tables at every end',
+    defaults: { table: 'I-23', seats: ['K-782', 'K-762'] },
+    hint: 'Sofa and loveseat facing each other across a conversation space, with a side table at each end.',
+    arrange: (t, s, o) => arrangeFacing(t, s, o.between) },
+  { id: 'fireside', name: 'Fireside pair', min: 4, max: 4, def: 4, usesBetween: true, tableLabel: 'Side table between the chairs',
+    defaults: { table: 'I-23', seats: ['K-712', 'K-715', 'K-712', 'K-715'] },
+    hint: 'Two lounge chairs angled toward each other, each with an ottoman, and a side table between them.',
+    arrange: (t, s, o) => arrangeFireside(t, s, o.between) },
+];
+
+// Small diagrams for the pattern cards (circle = table, rounded squares = seats, arrow-free: seats face the table).
+const LAYOUT_ICONS = {
+  around: '<circle cx="27" cy="27" r="8"/><rect x="21" y="3" width="12" height="9" rx="3"/><rect x="21" y="42" width="12" height="9" rx="3"/><rect x="3" y="21" width="9" height="12" rx="3"/><rect x="42" y="21" width="9" height="12" rx="3"/>',
+  cafe: '<circle cx="15" cy="17" r="5"/><rect x="10" y="3" width="10" height="6" rx="2"/><rect x="10" y="25" width="10" height="6" rx="2"/><g transform="rotate(90 39 37)"><circle cx="39" cy="37" r="5"/><rect x="34" y="23" width="10" height="6" rx="2"/><rect x="34" y="45" width="10" height="6" rx="2"/></g>',
+  sunburst: '<g transform="translate(27 8)"><rect x="-3.5" y="8" width="7" height="22" rx="2.5" transform="rotate(-66)"/><rect x="-3.5" y="8" width="7" height="22" rx="2.5" transform="rotate(-22)"/><rect x="-3.5" y="8" width="7" height="22" rx="2.5" transform="rotate(22)"/><rect x="-3.5" y="8" width="7" height="22" rx="2.5" transform="rotate(66)"/><circle cx="7.4" cy="7.4" r="2.6"/><circle cx="0" cy="10.5" r="2.6"/><circle cx="-7.4" cy="7.4" r="2.6"/></g>',
+  row: '<rect x="3" y="14" width="14" height="26" rx="4"/><circle cx="27" cy="22" r="5"/><rect x="37" y="14" width="14" height="26" rx="4"/>',
+  lshape: '<circle cx="8" cy="9" r="4.5"/><rect x="15" y="4" width="28" height="10" rx="3"/><circle cx="49" cy="9" r="4.5"/><rect x="3" y="18" width="10" height="22" rx="3"/><circle cx="8" cy="46" r="4.5"/>',
+  ushape: '<circle cx="7" cy="9" r="4.5"/><rect x="14" y="4" width="26" height="10" rx="3"/><circle cx="47" cy="9" r="4.5"/><rect x="3" y="22" width="13" height="16" rx="3"/><rect x="38" y="22" width="13" height="16" rx="3"/>',
+  facing: '<circle cx="7" cy="10" r="4.5"/><rect x="14" y="5" width="26" height="10" rx="3"/><circle cx="47" cy="10" r="4.5"/><circle cx="11" cy="44" r="4.5"/><rect x="18" y="39" width="18" height="10" rx="3"/><circle cx="43" cy="44" r="4.5"/>',
+  fireside: '<g transform="rotate(-15 13 17)"><rect x="6" y="6" width="14" height="22" rx="3"/><rect x="7" y="32" width="12" height="11" rx="3"/></g><circle cx="27" cy="12" r="4.5"/><g transform="rotate(15 41 17)"><rect x="34" y="6" width="14" height="22" rx="3"/><rect x="35" y="32" width="12" height="11" rx="3"/></g>'
+};
+
+/* ---------- State ---------- */
+// The group is a list of pieces, each placed freely on the floor: { uid, id (model), x, z (metres), rot (radians) }.
+// rot follows the same rule as the patterns: a piece turned by rot faces (sin rot, cos rot); 0 faces the viewer.
+// `preset` remembers which pattern made the layout ({ id, between, tableId }) until a piece is moved, added or removed.
+const state = {
+  pieces: [],
+  preset: null,
+  frame: 0,                 // index into COLORS
+  fabric: FABRICS[0].id
+};
+let nextUid = 1;
+const newPiece = (id, p) => ({ uid: nextUid++, id, x: p.x, z: p.z, rot: p.rot || 0, top: p.top || null });
+// The chosen top id of a piece (null: default or no tops). Kept only if the piece's model has that top.
+const validTop = (id, topId) => { const m = modelById(id); return m && m.tops && m.tops.some(t => t.id === topId) ? topId : null; };
+const modelById = id => MODELS.find(m => m.id === id);
+const layoutById = id => LAYOUTS.find(l => l.id === id);
+const seatModels = () => MODELS.filter(m => m.type === 'seat');
+const tableModels = () => MODELS.filter(m => m.type === 'table');
+const isSeat = p => modelById(p.id).type === 'seat';
+const seatPieces = () => state.pieces.filter(isSeat);
+const tablePieces = () => state.pieces.filter(p => !isSeat(p));
+const pieceByUid = uid => state.pieces.find(p => p.uid === uid);
+const layoutName = () => state.preset ? layoutById(state.preset.id).name : 'Custom layout';
+
+// A model's real footprint once its file has loaded; until then a stand-in, so the floor plan can still draw it.
+const loadedTpl = new Map();   // template key (tplKey) -> prepared template; also model id -> one of its templates (for the size)
+const fpOf = id => (loadedTpl.get(id) || {}).fp || (modelById(id).type === 'seat' ? { w: 0.65, d: 0.8, h: 0.9 } : { w: 0.5, d: 0.5, h: 0.5 });
+
+// Corners of a piece's footprint on the floor, as [x, z] pairs.
+function pieceCorners(p, fp = fpOf(p.id)) {
+  const c = Math.cos(p.rot), s = Math.sin(p.rot);
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => {
+    const lx = a * fp.w / 2, lz = b * fp.d / 2;
+    return [p.x + lx * c + lz * s, p.z - lx * s + lz * c];
+  });
+}
+function piecesBounds(list = state.pieces) {
+  if (!list.length) return { x0: -0.5, x1: 0.5, z0: -0.5, z1: 0.5, h: 0.8, empty: true };
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, h = 0;
+  list.forEach(p => {
+    pieceCorners(p).forEach(([x, z]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); });
+    h = Math.max(h, fpOf(p.id).h);
+  });
+  return { x0, x1, z0, z1, h };
+}
+
+// Lay out a pattern. Its models are loaded first, since the spacing depends on their real size.
+// opts: n (seats), tableId (null = no table), seatIds (one per seat, extended with the last), between.
+let presetToken = 0;
+async function applyPreset(layoutId, opts = {}) {
+  const L = layoutById(layoutId), D = L.defaults || {};
+  const tableId = 'tableId' in opts ? opts.tableId : (modelById(D.table) ? D.table : ((tableModels()[0] || {}).id || null));
+  const n = Math.max(L.min, Math.min(L.max, opts.n || L.def));
+  let seatIds = (opts.seatIds || []).filter(id => modelById(id));
+  if (!seatIds.length && D.seats) seatIds = D.seats.filter(id => modelById(id));
+  if (!seatIds.length) seatIds = [modelById(D.seat) ? D.seat : seatModels()[0].id];
+  while (seatIds.length < n) seatIds.push(seatIds[seatIds.length - 1]);
+  seatIds = seatIds.slice(0, n);
+  const between = opts.between ?? true;
+  const token = ++presetToken;
+  let tpls;
+  try {
+    if (framedOnce) setStatus('Loading models…');
+    tpls = await loadTemplates([...(tableId ? [tableId] : []), ...seatIds]);
+  } catch (err) { if (token === presetToken) loadFailed(err); return; }
+  if (token !== presetToken) return;
+  const tableItem = tableId ? { tpl: tpls[tableId], fp: tpls[tableId].fp } : null;
+  const plan = L.arrange(tableItem, seatIds.map(id => ({ tpl: tpls[id], fp: tpls[id].fp })), { between });
+  // Pieces keep their identity in order, so the ones that stay glide to their new spots instead of popping in again.
+  const oldT = tablePieces(), oldS = seatPieces();
+  const pieces = [
+    ...plan.tables.map((p, i) => ({ uid: oldT[i] ? oldT[i].uid : nextUid++, id: tableId, x: p.x, z: p.z, rot: p.rot,
+      top: validTop(tableId, (oldT[i] || oldT[0] || {}).top) })),
+    ...plan.seats.map((p, i) => ({ uid: oldS[i] ? oldS[i].uid : nextUid++, id: seatIds[i], x: p.x, z: p.z, rot: p.rot })),
+  ];
+  const b = piecesBounds(pieces), cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;   // centre the group on the floor
+  pieces.forEach(p => { p.x -= cx; p.z -= cz; });
+  state.pieces = pieces;
+  state.preset = { id: layoutId, between, tableId };
+  selectedUid = null;
+  planFit();
+  commit({ fly: true });
+}
+
+// Lay the current pattern out again (after a change to the seat count, the table option or a model).
+// Returns false when the layout is custom, which keeps every piece where the customer put it.
+function rearrange(changes = {}) {
+  if (!state.preset) return false;
+  const t = tablePieces()[0];
+  applyPreset(state.preset.id, { tableId: t ? t.id : state.preset.tableId, seatIds: seatPieces().map(p => p.id),
+    n: seatPieces().length, between: state.preset.between, ...changes });
+  return true;
+}
+
+// Share link: the whole layout lives in the URL hash, so a customer can bookmark or send it.
+function saveHash() {
+  try {
+    const p = new URLSearchParams({
+      g: state.pieces.map(q => `${q.id}~${q.x.toFixed(3)}~${q.z.toFixed(3)}~${+THREE.MathUtils.radToDeg(q.rot).toFixed(1)}${q.top ? '~' + q.top : ''}`).join(','),
+      frame: String(state.frame), fabric: state.fabric });
+    if (state.preset) p.set('preset', `${state.preset.id}~${state.preset.between ? 1 : 0}~${state.preset.tableId || ''}`);
+    history.replaceState(null, '', '#' + p.toString());
+  } catch (e) { /* sandboxed frames may not allow it */ }
+}
+function loadHash() {
+  try {
+    const p = new URLSearchParams(location.hash.slice(1));
+    (p.get('g') || '').split(',').forEach(item => {
+      const [id, x, z, deg, top] = item.split('~');
+      if (modelById(id) && [x, z, deg].every(v => isFinite(parseFloat(v))))
+        state.pieces.push(newPiece(id, { x: +x, z: +z, rot: THREE.MathUtils.degToRad(+deg), top: validTop(id, top) }));
+    });
+    const pr = (p.get('preset') || '').split('~');
+    if (state.pieces.length && layoutById(pr[0])) state.preset = { id: pr[0], between: pr[1] !== '0', tableId: modelById(pr[2]) ? pr[2] : null };
+    const f = parseInt(p.get('frame'), 10);
+    if (f >= 0 && f < COLORS.length) state.frame = f;
+    if (FABRICS.some(x => x.id === p.get('fabric'))) state.fabric = p.get('fabric');
+  } catch (e) { /* ignore a malformed link */ }
+}
+
+/* ---------- Scene ---------- */
+const loadingEl = document.getElementById('loading');
+const statusEl = document.getElementById('status');
+let scene, camera, renderer, controls, root, shadow, key, shadowCatcher, floorDisc, pulseRing, dust;
+let buildToken = 0, latestFrame = -1, latestFabric = null, framedOnce = false;
+const wraps = new Map();                      // piece uid -> its group in the 3D scene
+let selRing;                                  // glowing ring under the piece selected on the floor plan
+const frameTextures = new Map(), fabricCache = new Map();
+const pending = new Map();     // model id -> Promise of its prepared template
+const clock = new THREE.Clock();
+
+// Camera "home" for the current group (set in updateStage): used by Reset, the view presets and the PDF pictures.
+const home = { target: new THREE.Vector3(), dist: 5, radius: 2, height: 1 };
+const BASE_ROTATE_SPEED = 2;  // OrbitControls units; the speed slider multiplies this
+let rotateDir = 1, tween = null, pulseT = 1;
+const nav = { vx: 0, vy: 0, vz: 0, hold: null };   // velocities for the dock's pan / zoom buttons
+
+// ONE material per surface, shared by every piece, so changing the finish changes the whole group at once.
+const frameMat = new THREE.MeshStandardMaterial({ color: COLORS[0].hex || '#111111', roughness: FRAME_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
+const fabricMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: FABRIC_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
+
+function init() {
+  loadHash();
+
+  scene = new THREE.Scene();          // transparent: the page's gradient shows through, and PDF pictures stay clean
+
+  camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 1000);
+  camera.position.set(2, 2, 4);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.getElementById('viewer').appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.07;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = BASE_ROTATE_SPEED;
+  controls.addEventListener('start', () => { tween = null; setAutoRotate(false); hideHint(); clearViewChip(); });
+
+  createLights();
+  root = new THREE.Group();
+  scene.add(root);
+  addStage();
+
+  buildUI();
+  setupTabs();
+  setupDock();
+  setupQuote();
+  setupPlan();
+  selectFrame(state.frame);
+  selectFabric(state.fabric);
+  refreshControls();
+  if (state.pieces.length) { planFit(); rebuild({ fly: true }); }   // from a share link
+  else applyPreset('around');
+
+  const panel = document.getElementById('panel');
+  // Start collapsed on small screens so the panel doesn't cover the furniture
+  if (innerWidth < 600) panel.open = false;
+  document.body.classList.toggle('panel-open', panel.open);
+  panel.addEventListener('toggle', () => { document.body.classList.toggle('panel-open', panel.open); applyViewOffset(); });
+
+  addEventListener('resize', onResize);
+  applyViewOffset();
+  setTimeout(hideHint, 7000);
+  renderer.setAnimationLoop(animate);
+}
+
+function createLights() {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.85;
+  pmrem.dispose();
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.22));
+  // All three lights are (near) white so every frame finish and fabric shows its true colour. Coloured lights tint
+  // whatever faces them: an orange rim light from above turned every table top and arm rest orange.
+  key = new THREE.DirectionalLight(0xffffff, 2.1);      // key light that casts the real shadows
+  key.position.set(4, 7, 3);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.bias = -0.0004;
+  key.shadow.radius = 4;
+  scene.add(key, key.target);
+
+  // Rim light from behind, kept low so it outlines the silhouettes without washing over the flat tops.
+  const rim = new THREE.DirectionalLight(0xffffff, 1.0);
+  rim.position.set(-5, 1.2, -6);
+  const fill = new THREE.DirectionalLight(0xeef2ff, 0.45); // soft fill from the other side
+  fill.position.set(-6, 2.5, 4);
+  scene.add(rim, fill);
+}
+
+// The stage: real shadows, a soft contact shadow, a glowing floor disc, a pulse ring and drifting dust in the light.
+function addStage() {
+  // Real shadows from the key light land on this invisible floor
+  shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.32 }));
+  shadowCatcher.rotation.x = -Math.PI / 2;
+  shadowCatcher.receiveShadow = true;
+  scene.add(shadowCatcher);
+
+  // Soft contact shadow under the group: a transparent plane with a blurred dark ellipse (resized for each layout).
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grad.addColorStop(0,    'rgba(0,0,0,0.50)');
+  grad.addColorStop(0.45, 'rgba(0,0,0,0.28)');
+  grad.addColorStop(1,    'rgba(0,0,0,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 256, 256);
+  shadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, toneMapped: false })
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.002;       // just above the floor to avoid z-fighting
+  shadow.renderOrder = -1;
+  scene.add(shadow);
+
+  // Floor disc: a pool of light with faint survey rings and a glowing rim
+  const fc = document.createElement('canvas');
+  fc.width = fc.height = 1024;
+  const f = fc.getContext('2d');
+  const pool = f.createRadialGradient(512, 512, 0, 512, 512, 512);
+  pool.addColorStop(0, 'rgba(255,255,255,0.20)');
+  pool.addColorStop(0.6, 'rgba(255,255,255,0.07)');
+  pool.addColorStop(1, 'rgba(255,255,255,0)');
+  f.fillStyle = pool;
+  f.fillRect(0, 0, 1024, 1024);
+  f.strokeStyle = 'rgba(255,255,255,0.07)';
+  f.lineWidth = 1.5;
+  for (let r = 60; r < 470; r += 52) { f.beginPath(); f.arc(512, 512, r, 0, Math.PI * 2); f.stroke(); }
+  f.strokeStyle = 'rgba(110,200,235,0.55)';
+  f.lineWidth = 3;
+  f.beginPath(); f.arc(512, 512, 478, 0, Math.PI * 2); f.stroke();
+  f.strokeStyle = 'rgba(110,200,235,0.16)';
+  f.lineWidth = 14;
+  f.beginPath(); f.arc(512, 512, 478, 0, Math.PI * 2); f.stroke();
+  const discTex = new THREE.CanvasTexture(fc);
+  discTex.colorSpace = THREE.SRGBColorSpace;
+  floorDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 128),
+    new THREE.MeshBasicMaterial({ map: discTex, transparent: true, depthWrite: false, toneMapped: false }));
+  floorDisc.rotation.x = -Math.PI / 2;
+  floorDisc.position.y = 0.001;
+  floorDisc.renderOrder = -2;
+  scene.add(floorDisc);
+
+  // Pulse ring: sweeps outward across the floor whenever the configuration changes
+  pulseRing = new THREE.Mesh(new THREE.RingGeometry(0.965, 1, 160),
+    new THREE.MeshBasicMaterial({ color: 0x5cc4e8, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+  pulseRing.rotation.x = -Math.PI / 2;
+  pulseRing.position.y = 0.003;
+  scene.add(pulseRing);
+
+  // Dust motes drifting up through the light
+  const N = 240, pos = new Float32Array(N * 3), speed = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const a = Math.random() * Math.PI * 2, r = 0.25 + Math.sqrt(Math.random()) * 1.1;
+    pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 1] = Math.random(); pos[i * 3 + 2] = Math.sin(a) * r;
+    speed[i] = 0.015 + Math.random() * 0.045;
+  }
+  const dg = new THREE.BufferGeometry();
+  dg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const dc = document.createElement('canvas');
+  dc.width = dc.height = 64;
+  const d = dc.getContext('2d');
+  const dot = d.createRadialGradient(32, 32, 0, 32, 32, 32);
+  dot.addColorStop(0, 'rgba(255,255,255,1)'); dot.addColorStop(0.35, 'rgba(200,235,250,.5)'); dot.addColorStop(1, 'rgba(150,215,240,0)');
+  d.fillStyle = dot; d.fillRect(0, 0, 64, 64);
+  dust = new THREE.Points(dg, new THREE.PointsMaterial({ map: new THREE.CanvasTexture(dc), color: 0xcdeefa, size: 0.03, transparent: true,
+    opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  dust.userData.speed = speed;
+  scene.add(dust);
+
+  // Ring under the piece selected on the floor plan
+  selRing = new THREE.Mesh(new THREE.RingGeometry(0.92, 1, 96),
+    new THREE.MeshBasicMaterial({ color: 0x8fd8f2, transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false }));
+  selRing.rotation.x = -Math.PI / 2;
+  selRing.position.y = 0.004;
+  selRing.visible = false;
+  scene.add(selRing);
+}
+
+function pulse() { pulseT = 0; }
+
+/* ---------- Models ---------- */
+// Which part of a model is fabric? Any mesh with FABRIC in its own or a parent's name. Everything else is frame.
+function isFabricMesh(obj) {
+  for (let o = obj; o; o = o.parent) if (o.name && o.name.toUpperCase().includes('FABRIC')) return true;
+  return false;
+}
+
+function scaleUVs(geometry, k) {
+  const uv = geometry.attributes.uv;
+  if (!uv || k === 1 || geometry.userData.uvScaled) return;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * k, uv.getY(i) * k);
+  uv.needsUpdate = true;
+  geometry.userData.uvScaled = true;
+}
+
+// Rescales a mesh's UVs so they cover FRAME_UV_PER_METRE UV units per metre, whatever scale the GLB was exported with,
+// so a finish looks the same on every part and every model. Does nothing if the UVs are already at that scale.
+// `scale` is how much the model is resized on load (sizeIn), so the grain is right at the final size.
+function normalizeUVs(mesh, scale = 1) {
+  const g = mesh.geometry, pos = g.attributes.position, uv = g.attributes.uv;
+  if (!uv) { console.warn('Mesh has no UVs, so a texture cannot be applied:', mesh.name); return; }
+  if (g.userData.uvScaled) return;
+  const idx = g.index ? g.index.array : null, n = idx ? idx.length : pos.count;
+  let worldArea = 0, uvArea = 0;
+  for (let i = 0; i < n; i += 3) {
+    const a = idx ? idx[i] : i, b = idx ? idx[i + 1] : i + 1, c = idx ? idx[i + 2] : i + 2;
+    const e1x = pos.getX(b) - pos.getX(a), e1y = pos.getY(b) - pos.getY(a), e1z = pos.getZ(b) - pos.getZ(a);
+    const e2x = pos.getX(c) - pos.getX(a), e2y = pos.getY(c) - pos.getY(a), e2z = pos.getZ(c) - pos.getZ(a);
+    const cx = e1y * e2z - e1z * e2y, cy = e1z * e2x - e1x * e2z, cz = e1x * e2y - e1y * e2x;
+    worldArea += Math.sqrt(cx * cx + cy * cy + cz * cz) / 2;
+    uvArea += Math.abs((uv.getX(b) - uv.getX(a)) * (uv.getY(c) - uv.getY(a)) - (uv.getX(c) - uv.getX(a)) * (uv.getY(b) - uv.getY(a))) / 2;
+  }
+  worldArea *= scale * scale;
+  if (!worldArea || !uvArea) return;
+  const k = FRAME_UV_PER_METRE / Math.sqrt(uvArea / worldArea);
+  if (Math.abs(k - 1) < 1e-3) return;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * k, uv.getY(i) * k);
+  uv.needsUpdate = true;
+  g.userData.uvScaled = true;
+}
+
+// Turns a loaded GLB into a template: shared materials, UVs set up, and the model stood on the floor with its footprint
+// centred on the origin (so a piece can be placed and turned about its own middle).
+function prepareTemplate(def, gltfScene) {
+  // Measure the model as exported (turned to face front), and work out the resize to its real size, if one is given.
+  gltfScene.updateMatrixWorld(true);
+  const raw = new THREE.Box3().setFromObject(gltfScene, true).getSize(new THREE.Vector3());
+  const turned = Math.abs(Math.sin(THREE.MathUtils.degToRad(def.yawDeg || 0))) > 0.7;
+  const rawW = turned ? raw.z : raw.x, rawD = turned ? raw.x : raw.z;
+  const IN = 0.0254, fmt = v => (v / IN).toFixed(1);
+  console.info(`${def.id} as exported: ${fmt(rawW)}" wide x ${fmt(rawD)}" deep x ${fmt(raw.y)}" high`);
+  let sXZ = 1, sY = 1;
+  const target = { ...(def.sizeIn || {}) };
+  if (def.dining && !target.h) target.h = DINING_HEIGHT_IN;
+  if (rawW && rawD && raw.y && (target.w || target.h)) {
+    if (target.w && target.d) sXZ = ((target.w * IN) / rawW + (target.d * IN) / rawD) / 2;
+    sY = target.h ? (target.h * IN) / raw.y : sXZ;
+    if (Math.abs(sXZ - 1) > 0.01 || Math.abs(sY - 1) > 0.01)
+      console.info(`${def.id} resized to ${target.w ? target.w + '" x ' + target.d + '" x ' : ''}${target.h ? target.h + '" high' : ''} (x${sXZ.toFixed(3)} across, x${sY.toFixed(3)} up)`);
+  }
+  const uvScale = Math.cbrt(sXZ * sXZ * sY);
+
+  let hasFabric = false;
+  gltfScene.traverse(obj => {
+    if (!obj.isMesh) return;
+    obj.castShadow = true;
+    if (isFabricMesh(obj)) {
+      hasFabric = true;
+      obj.material = fabricMat;
+      scaleUVs(obj.geometry, def.fabricRepeat || 1);
+    } else {
+      obj.material = frameMat;
+      if (def.normalizeFrameUV) normalizeUVs(obj, uvScale);
+    }
+  });
+
+  const sizer = new THREE.Group();          // the resize happens before the turn, so "up" stays up
+  sizer.add(gltfScene);
+  sizer.scale.set(sXZ, sY, sXZ);
+  const inner = new THREE.Group();
+  inner.add(sizer);
+  inner.rotation.y = THREE.MathUtils.degToRad(def.yawDeg || 0);
+  const holder = new THREE.Group();
+  holder.add(inner);
+  holder.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(holder, true);
+  const centre = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  inner.position.set(-centre.x, -box.min.y, -centre.z);
+  return { def, object: holder, hasFabric, fp: { w: size.x, d: size.z, h: size.y } };
+}
+
+// Each GLB file is downloaded once; a table's base is shared by all of its tops.
+const gltfFiles = new Map();   // file -> Promise of the loaded glTF
+function loadGLB(file) {
+  if (!gltfFiles.has(file)) {
+    gltfFiles.set(file, new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE + file + '?v=' + encodeURIComponent(ASSET_VERSION)));
+    gltfFiles.get(file).catch(() => gltfFiles.delete(file));   // allow a retry after a failed download
+  }
+  return gltfFiles.get(file);
+}
+
+// Is this object the base model's own top? Its name (or a parent's) reads TABLETOP, ignoring case, spaces, _ and -.
+const isTabletopName = n => !!n && n.toUpperCase().replace(/[\s_\-.]/g, '').includes('TABLETOP');
+
+// Put a chosen top on a copy of the table's base. The base's TABLETOP part is taken out and the new top is fitted into
+// the space it filled: centred on it, resting at its underside, and scaled to its width (which also fixes a top
+// exported in other units). Without a TABLETOP part the top is added as exported, in the base's own coordinates.
+function fitTop(def, top, baseScene, topScene) {
+  // A top is a flat sheet. If the file is clearly not one (an old whole-table file left under the same name, for example),
+  // leave the table with its own top rather than stack a second table on it.
+  topScene.updateMatrixWorld(true);
+  const tb = new THREE.Box3().setFromObject(topScene, true).getSize(new THREE.Vector3());
+  if (tb.y > 0.1 * Math.max(tb.x, tb.z)) {
+    console.warn(`${def.id}: ${top.file} is ${(tb.y / 0.0254).toFixed(1)}" tall, so it is not a table top (an old file?). The table keeps its own top.`);
+    toast(`The ${top.name} top isn't available yet`);
+    return false;
+  }
+  baseScene.updateMatrixWorld(true);
+  const olds = [];
+  baseScene.traverse(o => { if (o !== baseScene && isTabletopName(o.name) && !olds.some(a => { for (let q = o.parent; q; q = q.parent) if (q === a) return true; return false; })) olds.push(o); });
+  const place = new THREE.Box3();
+  olds.forEach(o => place.union(new THREE.Box3().setFromObject(o, true)));
+  olds.forEach(o => o.parent.remove(o));
+  const holder = new THREE.Group();
+  holder.name = 'tabletop_' + top.id;
+  holder.add(topScene);
+  if (!olds.length) {
+    console.warn(`${def.id}: no part named TABLETOP in ${def.file}, so the ${top.name} top is placed as exported.`);
+  } else {
+    holder.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(holder, true);
+    const ps = place.getSize(new THREE.Vector3()), ts = box.getSize(new THREE.Vector3());
+    let k = Math.max(ps.x, ps.z) / Math.max(ts.x, ts.z);
+    if (!isFinite(k) || k <= 0) k = 1;
+    if (Math.abs(k - 1) < 0.01) k = 1;
+    else console.info(`${def.id}: ${top.file} scaled x${k.toFixed(4)} to match the base's top`);
+    const pc = place.getCenter(new THREE.Vector3()), tc = box.getCenter(new THREE.Vector3());
+    holder.scale.setScalar(k);
+    holder.position.set(pc.x - tc.x * k, place.min.y - box.min.y * k, pc.z - tc.z * k);
+  }
+  baseScene.add(holder);
+  return true;
+}
+
+// A template for a model (and, for a table with tops, one of its tops: undefined = its default top).
+function loadTemplate(def, topId) {
+  const key = tplKey(def.id, topId), top = topOf(def, topId);
+  if (!pending.has(key)) {
+    // A top file that is missing (not uploaded yet) is not an error: the table keeps the top in its own GLB.
+    const topLoad = top ? loadGLB(top.file).catch(err => {
+      console.warn(`${def.id}: could not load ${top.file}, so the table shows its own top.`, err);
+      toast(`The ${top.name} top isn't available yet`);
+      return null;
+    }) : null;
+    pending.set(key, Promise.all([loadGLB(def.file), topLoad]).then(([base, topGltf]) => {
+      const sceneCopy = topGltf ? base.scene.clone(true) : base.scene;   // clones share geometry, so a top costs only its own file
+      if (topGltf) fitTop(def, top, sceneCopy, topGltf.scene.clone(true));
+      const t = prepareTemplate(def, sceneCopy);
+      loadedTpl.set(key, t);
+      if (!loadedTpl.has(def.id)) loadedTpl.set(def.id, t);          // the size is the same whichever top
+      return t;
+    }));
+    pending.get(key).catch(() => pending.delete(key));               // allow a retry after a failed download
+  }
+  return pending.get(key);
+}
+
+function setStatus(text, isError) {
+  statusEl.hidden = !text;
+  statusEl.textContent = text || '';
+  statusEl.classList.toggle('error', !!isError);
+}
+function hideLoading(errorText) {
+  if (errorText) {
+    loadingEl.classList.add('error');
+    document.getElementById('loadingText').textContent = errorText;
+    return;
+  }
+  loadingEl.classList.add('done');
+}
+let toastTimer;
+function toast(text) {
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function hideHint() { document.getElementById('hint').classList.add('gone'); }
+
+/* ---------- Building the group ---------- */
+// Load templates by model id ('I-47', its default top) or by template key ('I-47|WAVE').
+async function loadTemplates(keys) {
+  const out = {};
+  await Promise.all([...new Set(keys)].map(async key => {
+    const [id, top] = key.split('|');
+    out[key] = await loadTemplate(modelById(id), top);
+  }));
+  return out;
+}
+function loadFailed(err) {
+  console.error(err);
+  if (!framedOnce) hideLoading('Could not load a model. Please refresh and try again.');
+  setStatus('Could not load a model. Please refresh and try again.', true);
+}
+
+// Bring the 3D scene in line with state.pieces: new pieces drop in, moved ones glide over, removed ones go.
+// fly: also glide the camera to frame the whole group (after a pattern, or a piece added or removed).
+async function rebuild({ fly = false } = {}) {
+  const token = ++buildToken;                 // a newer change makes any slower, older build give up
+  const ids = state.pieces.map(p => tplKey(p.id, p.top));
+  let tpls;
+  try {
+    if (framedOnce && ids.some(id => !loadedTpl.has(id))) setStatus(ids.some(id => !loadedTpl.has(id.split('|')[0])) ? 'Loading models…' : 'Loading top…');
+    tpls = await loadTemplates(ids);
+  } catch (err) { if (token === buildToken) loadFailed(err); return; }
+  if (token !== buildToken) return;
+  setStatus('');
+
+  const now = performance.now(), live = new Set();
+  let drops = 0;
+  state.pieces.forEach(p => {
+    let w = wraps.get(p.uid);
+    const key = tplKey(p.id, p.top);
+    if (w && w.userData.model === p.id && w.userData.key !== key) {     // only the top changed: swap it in place
+      w.clear();
+      w.add(tpls[key].object.clone(true));
+      w.userData.key = key;
+      live.add(p.uid);
+      glideTo(w, p, now);
+      return;
+    }
+    if (w && w.userData.model !== p.id) { root.remove(w); w = null; }     // model changed: swap it
+    if (!w) {
+      w = new THREE.Group();
+      w.add(tpls[key].object.clone(true));   // clones share geometry and the shared materials
+      w.userData.model = p.id;
+      w.userData.key = key;
+      w.position.set(p.x, 0, p.z);
+      w.rotation.y = p.rot;
+      w.userData.enter = { t0: now + drops++ * 75 };
+      w.scale.setScalar(0.001);
+      root.add(w);
+      wraps.set(p.uid, w);
+    } else {
+      glideTo(w, p, now);
+    }
+    live.add(p.uid);
+  });
+  wraps.forEach((w, uid) => { if (!live.has(uid)) { root.remove(w); wraps.delete(uid); } });
+
+  const usesFabric = state.pieces.some(p => tpls[tplKey(p.id, p.top)].hasFabric);
+  document.getElementById('fabricNote').textContent = usesFabric ? 'One fabric for every seat in the group.'
+    : state.pieces.length ? 'None of the pieces in this group use fabric.' : 'Add a seat to choose its fabric.';
+
+  updateStage(fly);
+  if (drops || fly) pulse();
+  hideLoading();
+  drawPlan();
+  if (isQuoteOpen()) setTimeout(refreshQuote, 900);
+}
+
+function glideTo(w, p, now = performance.now()) {
+  const dx = p.x - w.position.x, dz = p.z - w.position.z;
+  let dr = p.rot - w.rotation.y;
+  dr = Math.atan2(Math.sin(dr), Math.cos(dr));                         // shortest way round
+  if (Math.abs(dx) + Math.abs(dz) + Math.abs(dr) < 1e-4) { w.userData.glide = null; return; }
+  w.userData.glide = { fx: w.position.x, fz: w.position.z, fr: w.rotation.y, dx, dz, dr, t0: now };
+}
+// Put a piece exactly where it belongs at once (while it is being dragged on the plan).
+function snapWrap(p) {
+  const w = wraps.get(p.uid);
+  if (!w) return;
+  w.userData.glide = null;
+  w.position.x = p.x; w.position.z = p.z; w.rotation.y = p.rot;
+}
+// Finish every animation at once (before taking pictures).
+function settleAll() {
+  wraps.forEach((w, uid) => {
+    const p = pieceByUid(uid);
+    if (p) snapWrap(p);
+    w.userData.enter = null;
+    w.scale.setScalar(1);
+    w.position.y = 0;
+  });
+}
+
+// Size the stage to the group and set the camera's "home" for it. fly: glide the camera there too.
+function updateStage(fly) {
+  const b = piecesBounds();
+  const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+  const sx = b.x1 - b.x0, sz = b.z1 - b.z0, sy = b.h;
+  const maxDim = Math.max(sx, sy, sz, 0.8);
+  const footR = Math.max(Math.hypot(sx, sz) / 2, 0.5);
+
+  shadow.position.set(cx, 0.002, cz);
+  shadow.scale.set(sx * 1.7 + 0.2, sz * 1.7 + 0.2, 1);   // a little wider than the group's footprint
+  shadowCatcher.position.set(cx, 0, cz);
+  shadowCatcher.scale.set(maxDim * 6, maxDim * 6, 1);
+  floorDisc.position.set(cx, 0.001, cz);
+  floorDisc.scale.setScalar(footR * 1.45);
+  pulseRing.position.set(cx, 0.003, cz);
+  dust.position.set(cx, 0, cz);
+  dust.scale.set(footR * 1.2, sy * 1.6, footR * 1.2);
+  dust.material.size = maxDim * 0.014;
+
+  // Fit the shadow camera to the group so shadows stay crisp at any size
+  key.target.position.set(cx, 0, cz);
+  key.target.updateMatrixWorld();
+  key.position.set(0.55, 1, 0.4).normalize().multiplyScalar(maxDim * 3).add(key.target.position);
+  const sc = key.shadow.camera, ext = footR * 1.4 + sy;
+  sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext;
+  sc.near = 0.01; sc.far = maxDim * 8;
+  sc.updateProjectionMatrix();
+  key.shadow.normalBias = maxDim * 0.004;
+
+  // Far enough back to frame the furniture, also across a narrow (portrait phone) screen
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const dist = Math.max(maxDim / (2 * tanHalf) * 1.8, maxDim / (2 * tanHalf * Math.min(1, camera.aspect)) * 1.25);
+  home.dist = dist; home.radius = footR; home.height = sy;
+  home.target.set(cx, sy / 2, cz);
+  if (!framedOnce || fly) {
+    camera.near = dist / 100;
+    camera.far = dist * 20;
+    camera.updateProjectionMatrix();
+    controls.minDistance = dist * 0.35;
+    controls.maxDistance = dist * 2.5;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;     // keep the camera above the floor
+  }
+  if (!framedOnce) {
+    // Opening shot: swoop in from high and far away
+    framedOnce = true;
+    controls.target.copy(home.target);
+    camera.position.copy(home.target).add(new THREE.Vector3(-0.6, 0.9, 1).normalize().multiplyScalar(dist * 2.4));
+    camera.lookAt(home.target);
+    flyTo(VIEWS.iso, dist, home.target, 2600);
+  } else if (fly) {
+    // Keep the angle the customer is looking from
+    flyTo(camera.position.clone().sub(controls.target).normalize(), dist, home.target, 900);
+  }
+}
+
+/* ---------- Camera moves ---------- */
+const VIEWS = {
+  front: new THREE.Vector3(0, 0.22, 1).normalize(),
+  side:  new THREE.Vector3(1, 0.22, 0).normalize(),
+  top:   new THREE.Vector3(0, 1, 0.02).normalize(),
+  iso:   new THREE.Vector3(0.5, 0.35, 1).normalize(),
+};
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutBack = t => { const c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+
+// Glide the camera to look at `target` from direction `dir`, `dist` away. It orbits around rather than cutting through.
+function flyTo(dir, dist, target, ms = 1100) {
+  const s0 = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+  const s1 = new THREE.Spherical().setFromVector3(dir.clone().normalize().multiplyScalar(dist));
+  let dTheta = s1.theta - s0.theta;
+  dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));   // shortest way round
+  tween = { s0, s1, dTheta, t0: controls.target.clone(), t1: target.clone(), start: performance.now(), ms };
+}
+
+function applyTween(now) {
+  const k = Math.min(1, (now - tween.start) / tween.ms), e = easeInOut(k);
+  const t = tween.t0.clone().lerp(tween.t1, e);
+  const s = new THREE.Spherical(
+    THREE.MathUtils.lerp(tween.s0.radius, tween.s1.radius, e),
+    THREE.MathUtils.lerp(tween.s0.phi, tween.s1.phi, e),
+    tween.s0.theta + tween.dTheta * e);
+  controls.target.copy(t);
+  camera.position.setFromSpherical(s).add(t);
+  camera.lookAt(t);
+  if (k >= 1) tween = null;
+}
+
+// Dock pan / zoom: a tap gives a short glide, holding the button keeps it moving.
+const NAV_DECAY = 7, NAV_TAP = 1.3, NAV_HOLD = 4.2;
+function navImpulse(action, amount) {
+  if (action === 'left') nav.vx -= amount;
+  if (action === 'right') nav.vx += amount;
+  if (action === 'up') nav.vy += amount;
+  if (action === 'down') nav.vy -= amount;
+  if (action === 'in') nav.vz -= amount;
+  if (action === 'out') nav.vz += amount;
+}
+function applyNav(dt) {
+  if (nav.hold) navImpulse(nav.hold, NAV_HOLD * dt);
+  const decay = Math.exp(-NAV_DECAY * dt);
+  nav.vx *= decay; nav.vy *= decay; nav.vz *= decay;
+  if (Math.abs(nav.vx) + Math.abs(nav.vy) + Math.abs(nav.vz) < 1e-4) return;
+  tween = null;
+  const dist = camera.position.distanceTo(controls.target);
+  if (nav.vx || nav.vy) {
+    camera.updateMatrix();
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+    const move = right.multiplyScalar(nav.vx * dist * 0.5 * dt).add(up.multiplyScalar(nav.vy * dist * 0.5 * dt));
+    const t = controls.target.clone().add(move);
+    // Keep the group within reach
+    const flat = new THREE.Vector2(t.x - home.target.x, t.z - home.target.z), lim = home.radius * 1.3;
+    if (flat.length() > lim) flat.setLength(lim);
+    t.set(home.target.x + flat.x, THREE.MathUtils.clamp(t.y, 0, home.height * 2 + home.radius * 0.5), home.target.z + flat.y);
+    const applied = t.clone().sub(controls.target);
+    controls.target.add(applied);
+    camera.position.add(applied);
+  }
+  if (nav.vz) {
+    const offset = camera.position.clone().sub(controls.target);
+    const len = THREE.MathUtils.clamp(offset.length() * Math.exp(nav.vz * 0.6 * dt), controls.minDistance, controls.maxDistance);
+    camera.position.copy(controls.target).add(offset.setLength(len));
+  }
+}
+
+// When the panel is open on a wide screen, shift the picture right so the furniture isn't hidden behind it.
+function applyViewOffset() {
+  const panel = document.getElementById('panel');
+  const W = innerWidth, H = innerHeight;
+  if (W >= 900 && panel.open) {
+    const s = (panel.offsetWidth + 20) / 2;
+    camera.setViewOffset(W, H, -s, 0, W, H);
+  } else {
+    camera.clearViewOffset();
+  }
+  camera.updateProjectionMatrix();
+}
+
+/* ---------- UI ---------- */
+function buildUI() {
+  // Pattern cards
+  const layoutsEl = document.getElementById('layouts');
+  LAYOUTS.forEach(L => {
+    const btn = document.createElement('button');
+    btn.className = 'layout-card';
+    btn.dataset.layout = L.id;
+    btn.innerHTML = `<svg viewBox="0 0 54 54" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">${LAYOUT_ICONS[L.id] || ''}</svg><span></span>`;
+    btn.querySelector('span').textContent = L.name;
+    btn.setAttribute('aria-label', `Pattern: ${L.name}`);
+    btn.addEventListener('click', () => applyPreset(L.id));
+    layoutsEl.appendChild(btn);
+  });
+  document.getElementById('seatMinus').addEventListener('click', () => rearrange({ n: seatPieces().length - 1 }));
+  document.getElementById('seatPlus').addEventListener('click', () => rearrange({ n: seatPieces().length + 1 }));
+  document.getElementById('between').addEventListener('change', e => rearrange({ between: e.target.checked }));
+
+  // Pieces: change every seat, or every table, at once
+  document.getElementById('seatAll').addEventListener('change', e => setModels(seatPieces(), e.target.value));
+  document.getElementById('tableAll').addEventListener('change', e => setModels(tablePieces(), e.target.value));
+  document.getElementById('topAll').addEventListener('change', e => setTops(tablePieces(), e.target.value));
+
+  // Frame finishes
+  const colorsEl = document.getElementById('colors');
+  COLORS.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'color';
+    btn.innerHTML = '<span class="dot"></span><span class="name"></span>';
+    const dot = btn.querySelector('.dot');
+    if (c.texture) {
+      // Use a small file from thumbs/ when it exists, otherwise the full texture image
+      const full = encodeURI(c.texture);
+      const thumb = BASE + 'thumbs/' + encodeURIComponent(c.textureThumb || c.texture.split('/').pop());
+      dot.style.backgroundColor = '#bbb';
+      c.thumbUrl = full;
+      const probe = new Image();
+      probe.onload = () => { c.thumbUrl = thumb; dot.style.backgroundImage = `url("${thumb}")`; updateSummary(); };
+      probe.onerror = () => { dot.style.backgroundImage = `url("${full}")`; };
+      probe.src = thumb;
+    } else {
+      // shine: a small highlight on the swatch, so Gloss Black can be told apart from Matte Black at a glance
+      dot.style.background = c.shine ? `radial-gradient(circle at 32% 28%, rgba(255,255,255,.55) 0, rgba(255,255,255,.12) 22%, transparent 42%), ${c.hex}` : c.hex;
+    }
+    btn.querySelector('.name').textContent = c.label;
+    btn.setAttribute('aria-label', `Frame color: ${c.label}`);
+    btn.dataset.idx = i;
+    btn.addEventListener('click', () => selectFrame(i));
+    colorsEl.appendChild(btn);
+  });
+
+  // Fabrics
+  const fabricsEl = document.getElementById('fabrics');
+  FABRICS.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'fabric-swatch';
+    btn.dataset.fabric = f.id;
+    btn.innerHTML = `<img alt="" loading="lazy"><span></span>`;
+    const img = btn.querySelector('img');
+    f.thumbOk = f.thumb;
+    img.onerror = () => { img.onerror = null; f.thumbOk = f.url; img.src = f.url; }; // no thumbnail yet: fall back to the full image
+    img.src = f.thumb;
+    btn.querySelector('span').textContent = f.label;
+    btn.setAttribute('aria-label', `Fabric: ${f.label}`);
+    btn.addEventListener('click', () => selectFabric(f.id));
+    fabricsEl.appendChild(btn);
+  });
+
+  document.getElementById('cta').addEventListener('click', () => {
+    const panel = document.getElementById('panel');
+    panel.open = true;
+    showTab(document.getElementById('tab-quote'));
+  });
+}
+
+let showTab = () => {};
+function setupTabs() {
+  const tabs = [...document.querySelectorAll('.tab')];
+  const ink = document.querySelector('.tab-ink');
+  const moveInk = tab => {
+    ink.style.width = tab.offsetWidth + 'px';
+    ink.style.transform = `translateX(${tab.offsetLeft}px)`;
+  };
+  showTab = tab => {
+    tabs.forEach(t => {
+      const on = t === tab;
+      t.classList.toggle('selected', on);
+      t.setAttribute('aria-selected', on);
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    moveInk(tab);
+    if (tab.id === 'tab-quote') refreshQuote();
+  };
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => showTab(tab));
+    tab.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      showTab(next); next.focus();
+    });
+  });
+  const reInk = () => moveInk(tabs.find(t => t.classList.contains('selected')));
+  addEventListener('resize', reInk);
+  document.getElementById('panel').addEventListener('toggle', reInk);
+  if (document.fonts) document.fonts.ready.then(reInk);
+  requestAnimationFrame(reInk);
+}
+
+// A change to the pieces: refresh the controls, update the 3D scene and remember it in the link.
+function commit(opts) {
+  state.pieces.forEach(p => { p.rot = Math.atan2(Math.sin(p.rot), Math.cos(p.rot)); });   // keep turns within ±180°
+  refreshControls();
+  saveHash();
+  rebuild(opts);
+}
+// The customer has changed the layout by hand, so it is no longer one of the patterns.
+function markCustom() { state.preset = null; }
+
+// Change the model of some pieces. A pattern re-spaces itself for the new sizes; a custom layout keeps its positions.
+function setModels(list, id) {
+  if (!id || !modelById(id) || !list.length) return;
+  list.forEach(p => { p.id = id; p.top = validTop(id, p.top); });
+  if (state.preset && modelById(id).type === 'table') state.preset.tableId = id;
+  if (!rearrange()) commit();
+}
+
+// Change the top of some tables. Only the top is swapped; nothing moves.
+function setTops(list, topId) {
+  list = list.filter(p => topOf(modelById(p.id), topId) && topOf(modelById(p.id), topId).id === topId);
+  if (!list.length) return;
+  list.forEach(p => { p.top = topId; });
+  commit();
+}
+const topName = p => { const t = topOf(modelById(p.id), p.top); return t ? t.name : ''; };
+
+function option(value, text, selected) {
+  const o = document.createElement('option');
+  o.value = value; o.textContent = text; o.selected = !!selected;
+  return o;
+}
+
+// Re-draw every control that depends on the pieces.
+function refreshControls() {
+  const P = state.preset, L = P ? layoutById(P.id) : null, seats = seatPieces(), tables = tablePieces();
+  document.querySelectorAll('.layout-card').forEach(b => {
+    const on = !!P && b.dataset.layout === P.id;
+    b.classList.toggle('selected', on);
+    b.setAttribute('aria-pressed', on);
+  });
+  document.getElementById('presetOpts').hidden = !P;
+  if (P) {
+    document.getElementById('seatCount').textContent = seats.length;
+    document.getElementById('seatMinus').disabled = seats.length <= L.min;
+    document.getElementById('seatPlus').disabled = seats.length >= L.max;
+    document.getElementById('betweenRow').hidden = !L.usesBetween || !(P.tableId || tables.length);
+    document.getElementById('between').checked = P.between;
+    document.getElementById('betweenText').textContent = L.tableLabel || 'Put a table between the seats';
+    document.querySelector('#presetOpts .row').hidden = L.min === L.max;   // a fixed set of pieces: no seat count
+  }
+  document.getElementById('layoutHint').textContent = P
+    ? `${L.hint} Drag any piece on the plan to make the layout your own.`
+    : 'Your own layout: drag pieces to move them, and drag the round handle to turn one. Tap a pattern above to start over.';
+
+  // Pieces tab
+  const allSel = document.getElementById('seatAll');
+  const sameSeat = seats.length > 0 && seats.every(p => p.id === seats[0].id);
+  allSel.replaceChildren(...(sameSeat ? [] : [option('', seats.length ? 'Mixed' : 'No seats', true)]),
+    ...seatModels().map(m => option(m.id, m.name, sameSeat && m.id === seats[0].id)));
+  allSel.disabled = !seats.length;
+  const tAll = document.getElementById('tableAll');
+  const sameTable = tables.length > 0 && tables.every(p => p.id === tables[0].id);
+  document.getElementById('tableAllRow').hidden = !tables.length;
+  tAll.replaceChildren(...(sameTable ? [] : [option('', 'Mixed', true)]), ...tableModels().map(m => option(m.id, m.name, sameTable && m.id === tables[0].id)));
+  // All table tops: when every table is the same model and it has tops
+  const topModel = sameTable ? modelById(tables[0].id) : null, topAll = document.getElementById('topAll');
+  document.getElementById('topAllRow').hidden = !(topModel && topModel.tops && tables.length > 1);
+  if (topModel && topModel.tops) {
+    const cur = tables.map(p => topOf(topModel, p.top).id), same = cur.every(t => t === cur[0]);
+    topAll.replaceChildren(...(same ? [] : [option('', 'Mixed', true)]), ...topModel.tops.map(t => option(t.id, t.name, same && t.id === cur[0])));
+  }
+
+  const list = document.getElementById('pieceList');
+  let si = 0, ti = 0;
+  list.replaceChildren(...[...tables, ...seats].map(p => {
+    const seat = isSeat(p);
+    const row = document.createElement('div');
+    row.className = 'piece-row' + (p.uid === selectedUid ? ' sel' : '');
+    row.dataset.uid = p.uid;
+    const label = document.createElement('span');
+    label.textContent = seat ? `Seat ${++si}` : `Table ${++ti}`;
+    const sel = document.createElement('select');
+    sel.setAttribute('aria-label', `${label.textContent} model`);
+    sel.replaceChildren(...(seat ? seatModels() : tableModels()).map(m => option(m.id, m.name, m.id === p.id)));
+    sel.addEventListener('change', () => setModels([p], sel.value));
+    const del = document.createElement('button');
+    del.className = 'dk';
+    del.title = 'Remove';
+    del.setAttribute('aria-label', `Remove ${label.textContent}`);
+    del.innerHTML = ICON_TRASH;
+    del.addEventListener('click', e => { e.stopPropagation(); removePiece(p.uid); });
+    row.addEventListener('click', e => { if (!e.target.closest('select')) selectPiece(p.uid); });
+    row.append(label, sel, del);
+    const m = modelById(p.id);
+    if (!seat && m.tops) {                    // a table with interchangeable tops: pick its pattern
+      row.classList.add('has-top');
+      const line = document.createElement('div');
+      line.className = 'top-line';
+      const small = document.createElement('small');
+      small.textContent = 'Top pattern';
+      const ts = document.createElement('select');
+      ts.setAttribute('aria-label', `${label.textContent} top pattern`);
+      ts.replaceChildren(...m.tops.map(t => option(t.id, t.name, t.id === topOf(m, p.top).id)));
+      ts.addEventListener('change', () => setTops([p], ts.value));
+      line.append(small, ts);
+      row.append(line);
+    }
+    return row;
+  }));
+  if (!state.pieces.length) {
+    const empty = document.createElement('p');
+    empty.className = 'hint';
+    empty.textContent = 'No pieces yet. Add some from the Layout tab.';
+    list.append(empty);
+  }
+  updateSummary();
+  requestAnimationFrame(fitPlanSize);       // the pattern options may have appeared or gone
+}
+
+// Swatch styles for a finish (used by the summary chips, the Quote tab and the PDF)
+const frameSwatchCSS = c => c.texture ? `url("${c.thumbUrl || encodeURI(c.texture)}") center / cover, #bbb` : c.hex;
+const fabricById = id => FABRICS.find(f => f.id === id);
+
+function chip(text, swatchCSS) {
+  const el = document.createElement('span');
+  el.className = 'chip';
+  if (swatchCSS) {
+    const sw = document.createElement('span');
+    sw.className = 'sw';
+    sw.style.background = swatchCSS;
+    el.append(sw);
+  }
+  el.append(text);
+  return el;
+}
+
+function updateSummary() {
+  const seats = seatPieces().length, tables = tablePieces();
+  const fabric = fabricById(state.fabric), c = COLORS[state.frame];
+  const tIds = [...new Set(tables.map(p => p.id))];
+  const tableChip = !tables.length ? 'No table'
+    : tIds.length === 1 ? `${tables.length > 1 ? tables.length + ' × ' : ''}${modelById(tIds[0]).name}${(() => {
+        const n = [...new Set(tables.map(topName))]; return n.length === 1 && n[0] ? ` · ${n[0]} top` : ''; })()}` : `${tables.length} tables`;
+  document.getElementById('summary').replaceChildren(
+    chip(layoutName()), chip(`${seats} seat${seats === 1 ? '' : 's'}`), chip(tableChip),
+    chip(c.label, frameSwatchCSS(c)),
+    ...(fabric ? [chip(fabric.label, `url("${fabric.thumbOk || fabric.thumb}") center / cover, #888`)] : []));
+}
+
+/* ---------- Floor plan (Layout tab) ---------- */
+// A top-down drawing in metres: x to the right, z toward the viewer (down the plan). Drag a piece to move it; drag the
+// round handle in front of the selected piece to turn it. Moves snap to 1 inch and turns to 15 degrees.
+const SNAP_MOVE = 0.0254, SNAP_TURN = Math.PI / 12, FT = 0.3048;
+const SVGNS = 'http://www.w3.org/2000/svg';
+const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+let selectedUid = null;
+let planView = { x: -2, z: -2, size: 4 };   // the square of floor the plan shows (m)
+let planEl = null, drag = null;
+const snapTo = (v, step) => Math.round(v / step) * step;
+const fmtFtIn = m => { const inch = Math.round(m / 0.0254); return `${Math.floor(inch / 12)}′ ${inch % 12}″`; };
+
+function setupPlan() {
+  planEl = document.getElementById('plan');
+  const add = document.getElementById('addSel');
+  const group = (label, models) => { const g = document.createElement('optgroup'); g.label = label; g.append(...models.map(m => option(m.id, m.name))); return g; };
+  add.replaceChildren(option('', '+ Add a piece', true), group('Seats', seatModels()), group('Tables', tableModels()));
+  add.addEventListener('change', () => { if (add.value) addPiece(add.value); add.value = ''; });
+  document.getElementById('rotLeft').addEventListener('click', () => turnSelected(Math.PI / 4));    // counter-clockwise from above
+  document.getElementById('rotRight').addEventListener('click', () => turnSelected(-Math.PI / 4));
+  document.getElementById('dupBtn').addEventListener('click', () => { if (selectedUid != null) duplicatePiece(selectedUid); });
+  document.getElementById('delBtn').addEventListener('click', () => { if (selectedUid != null) removePiece(selectedUid); });
+  document.getElementById('planFit').addEventListener('click', () => { planFit(); drawPlan(); });
+  planEl.addEventListener('pointerdown', planPointerDown);
+  planEl.addEventListener('pointermove', planPointerMove);
+  planEl.addEventListener('pointerup', planPointerUp);
+  planEl.addEventListener('pointercancel', planPointerUp);
+  planEl.addEventListener('keydown', planKey);
+  const refit = () => requestAnimationFrame(fitPlanSize);
+  addEventListener('resize', refit);
+  document.getElementById('panel').addEventListener('toggle', refit);
+  document.getElementById('tab-layout').addEventListener('click', refit);
+  if (document.fonts) document.fonts.ready.then(refit);
+  drawPlan();
+  refit();
+}
+
+// Size the floor plan so the tools under it are always in view without scrolling: on shorter screens the plan
+// shrinks (never below 220px) and so shows the whole layout a little smaller.
+function fitPlanSize() {
+  const wrap = document.querySelector('.plan-wrap'), box = document.querySelector('.tab-content');
+  if (!wrap || document.getElementById('pane-layout').hidden || !document.getElementById('panel').open) return;
+  wrap.style.width = '';
+  box.scrollTop = 0;
+  const full = wrap.offsetWidth, panel = document.getElementById('panel'), tools = document.querySelector('.plan-tools');
+  for (let i = 0; i < 2; i++) {             // a second pass catches any reflow from the first
+    const visibleBottom = Math.min(box.getBoundingClientRect().bottom, panel.getBoundingClientRect().bottom - 12);
+    const over = tools.getBoundingClientRect().bottom - visibleBottom + 4;
+    if (over <= 0) break;
+    wrap.style.width = Math.max(170, wrap.offsetWidth - over) + 'px';
+  }
+}
+
+// Frame the plan around the furniture, with room to move things.
+function planFit() {
+  const b = piecesBounds();
+  const size = Math.max(4, b.x1 - b.x0 + 1.6, b.z1 - b.z0 + 1.6);
+  planView = { x: (b.x0 + b.x1) / 2 - size / 2, z: (b.z0 + b.z1) / 2 - size / 2, size };
+}
+// Grow the view when a piece has left it (it never shrinks on its own, so nothing jumps while working).
+function planKeepInView() {
+  const b = piecesBounds(), m = 0.4, v = planView;
+  if (b.x0 - m >= v.x && b.x1 + m <= v.x + v.size && b.z0 - m >= v.z && b.z1 + m <= v.z + v.size) return;
+  const x0 = Math.min(b.x0 - m, v.x), x1 = Math.max(b.x1 + m, v.x + v.size);
+  const z0 = Math.min(b.z0 - m, v.z), z1 = Math.max(b.z1 + m, v.z + v.size);
+  const size = Math.max(x1 - x0, z1 - z0);
+  planView = { x: (x0 + x1) / 2 - size / 2, z: (z0 + z1) / 2 - size / 2, size };
+}
+
+// Pieces whose footprints collide. A dining chair may tuck under a dining table, so that pair is allowed.
+function rectsOverlap(A, B, tol) {
+  for (const R of [A, B]) for (let i = 0; i < 4; i++) {
+    const e = [R[(i + 1) % 4][0] - R[i][0], R[(i + 1) % 4][1] - R[i][1]], len = Math.hypot(e[0], e[1]) || 1;
+    const n = [-e[1] / len, e[0] / len];
+    const pa = A.map(q => q[0] * n[0] + q[1] * n[1]), pb = B.map(q => q[0] * n[0] + q[1] * n[1]);
+    if (Math.max(...pa) <= Math.min(...pb) + tol || Math.max(...pb) <= Math.min(...pa) + tol) return false;
+  }
+  return true;
+}
+function clashes() {
+  const out = new Set(), P = state.pieces, R = P.map(p => pieceCorners(p));
+  for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+    const a = modelById(P[i].id), b = modelById(P[j].id);
+    if ((a.tuck && b.dining) || (b.tuck && a.dining)) continue;
+    if (rectsOverlap(R[i], R[j], 0.01)) { out.add(P[i].uid); out.add(P[j].uid); }
+  }
+  return out;
+}
+
+function drawPlan() {
+  if (!planEl) return;
+  const v = planView, s = v.size;
+  planEl.setAttribute('viewBox', `${v.x} ${v.z} ${s} ${s}`);
+  const el = (tag, attrs, parent) => {
+    const e = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.append(e);
+    return e;
+  };
+  const frag = document.createDocumentFragment();
+
+  // Grid: a line every foot (every 5 feet on a big plan), stronger every 5 feet
+  const grid = el('g', { class: 'grid' }, frag), step = s > 14 ? FT * 5 : FT;
+  for (let i = Math.floor(v.x / step); i * step <= v.x + s; i++)
+    el('line', { x1: i * step, y1: v.z, x2: i * step, y2: v.z + s, class: Math.round(i * step / FT) % 5 === 0 ? 'major' : '' }, grid);
+  for (let j = Math.floor(v.z / step); j * step <= v.z + s; j++)
+    el('line', { x1: v.x, y1: j * step, x2: v.x + s, y2: j * step, class: Math.round(j * step / FT) % 5 === 0 ? 'major' : '' }, grid);
+
+  const bad = clashes(), fs = Math.max(0.09, s * 0.024);
+  [...tablePieces(), ...seatPieces()].forEach(p => {          // tables first, so tucked-in chairs draw on top
+    const fp = fpOf(p.id), m = modelById(p.id), seat = m.type === 'seat';
+    const g = el('g', { class: `pc ${seat ? 'seat' : 'table'}${p.uid === selectedUid ? ' sel' : ''}${bad.has(p.uid) ? ' clash' : ''}`,
+      transform: `translate(${p.x} ${p.z})`, 'data-uid': p.uid }, frag);
+    const body = el('g', { transform: `rotate(${-THREE.MathUtils.radToDeg(p.rot)})` }, g);
+    el('rect', { class: 'body', x: -fp.w / 2, y: -fp.d / 2, width: fp.w, height: fp.d, rx: Math.min(fp.w, fp.d) * (seat ? 0.12 : 0.22) }, body);
+    if (seat) el('line', { class: 'front', x1: -fp.w * 0.3, y1: fp.d / 2 - 0.05, x2: fp.w * 0.3, y2: fp.d / 2 - 0.05 }, body);   // the front edge
+    el('text', { 'font-size': fs }, g).textContent = m.id;
+  });
+
+  // Handle for turning the selected piece, out in front of it
+  const sp = selectedUid != null ? pieceByUid(selectedUid) : null;
+  if (sp) {
+    const reach = fpOf(sp.id).d / 2 + Math.max(0.3, s * 0.05);
+    const hx = sp.x + Math.sin(sp.rot) * reach, hz = sp.z + Math.cos(sp.rot) * reach;
+    const h = el('g', { class: 'handle' }, frag);
+    el('line', { x1: sp.x, y1: sp.z, x2: hx, y2: hz }, h);
+    el('circle', { cx: hx, cy: hz, r: Math.max(0.08, s * 0.02) }, h);
+    el('circle', { class: 'hit', cx: hx, cy: hz, r: Math.max(0.18, s * 0.045), 'data-handle': sp.uid }, h);   // bigger target for fingers
+  }
+  planEl.replaceChildren(frag);
+
+  const b = piecesBounds();
+  document.getElementById('planDims').textContent = state.pieces.length ? `Group ${fmtFtIn(b.x1 - b.x0)} × ${fmtFtIn(b.z1 - b.z0)}` : '';
+  const selEl = document.getElementById('planSel');
+  selEl.hidden = !sp;
+  if (sp) selEl.textContent = `${modelById(sp.id).name}${topName(sp) ? ` (${topName(sp)} top)` : ''} · ${Math.round(((THREE.MathUtils.radToDeg(sp.rot) % 360) + 360) % 360)}°`;
+  ['rotLeft', 'rotRight', 'dupBtn', 'delBtn'].forEach(id => { document.getElementById(id).disabled = !sp; });
+  document.getElementById('planWarn').hidden = !bad.size;
+}
+
+function selectPiece(uid) {
+  selectedUid = uid != null && pieceByUid(uid) ? uid : null;
+  document.querySelectorAll('.piece-row').forEach(r => r.classList.toggle('sel', +r.dataset.uid === selectedUid));
+  drawPlan();
+}
+
+function planPoint(e) {
+  const pt = planEl.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(planEl.getScreenCTM().inverse());
+  return { x: q.x, z: q.y };
+}
+function planPointerDown(e) {
+  if (e.button > 0) return;
+  const handle = e.target.closest('[data-handle]'), g = e.target.closest('.pc');
+  if (!handle && !g) { selectPiece(null); return; }
+  const p = pieceByUid(+(handle ? handle.dataset.handle : g.dataset.uid));
+  if (!p) return;
+  e.preventDefault();
+  planEl.focus({ preventScroll: true });
+  try { planEl.setPointerCapture(e.pointerId); } catch (_) {}
+  const at = planPoint(e);
+  drag = { p, mode: handle ? 'turn' : 'move', id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: at.x - p.x, oz: at.z - p.z, moved: false };
+  if (selectedUid !== p.uid) selectPiece(p.uid);
+}
+function planPointerMove(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 4) return;   // a tap, not a drag
+  drag.moved = true;
+  const at = planPoint(e), p = drag.p;
+  if (drag.mode === 'move') {
+    p.x = snapTo(at.x - drag.ox, SNAP_MOVE);
+    p.z = snapTo(at.z - drag.oz, SNAP_MOVE);
+  } else {
+    p.rot = snapTo(Math.atan2(at.x - p.x, at.z - p.z), SNAP_TURN);
+  }
+  snapWrap(p);
+  drawPlan();
+}
+function planPointerUp(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  const moved = drag.moved;
+  drag = null;
+  if (!moved) return;
+  markCustom();
+  planKeepInView();
+  commit();
+}
+function planKey(e) {
+  const p = selectedUid != null ? pieceByUid(selectedUid) : null;
+  if (!p) return;
+  const step = e.shiftKey ? 6 * SNAP_MOVE : SNAP_MOVE;
+  const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+  if (moves[e.key]) { p.x = snapTo(p.x + moves[e.key][0], SNAP_MOVE); p.z = snapTo(p.z + moves[e.key][1], SNAP_MOVE); }
+  else if (e.key === 'r' || e.key === 'R') p.rot = snapTo(p.rot + (e.shiftKey ? -SNAP_TURN : SNAP_TURN), SNAP_TURN);
+  else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removePiece(p.uid); return; }
+  else if (e.key === 'Escape') { selectPiece(null); return; }
+  else return;
+  e.preventDefault();
+  markCustom();
+  planKeepInView();
+  commit();
+}
+
+async function addPiece(id) {
+  try { await loadTemplates([id]); } catch (err) { loadFailed(err); return; }
+  const fp = fpOf(id), b = piecesBounds();
+  const p = newPiece(id, state.pieces.length
+    ? { x: snapTo(b.x1 + fp.w / 2 + 0.3, SNAP_MOVE), z: snapTo((b.z0 + b.z1) / 2, SNAP_MOVE), rot: 0 }
+    : { x: 0, z: 0, rot: 0 });
+  state.pieces.push(p);
+  selectedUid = p.uid;
+  markCustom();
+  planKeepInView();
+  commit({ fly: true });
+}
+function duplicatePiece(uid) {
+  const src = pieceByUid(uid);
+  if (!src) return;
+  const off = fpOf(src.id).w + 0.15;                     // to its right, along its own width
+  const p = newPiece(src.id, { x: snapTo(src.x + off * Math.cos(src.rot), SNAP_MOVE), z: snapTo(src.z - off * Math.sin(src.rot), SNAP_MOVE), rot: src.rot, top: src.top });
+  state.pieces.push(p);
+  selectedUid = p.uid;
+  markCustom();
+  planKeepInView();
+  commit({ fly: true });
+}
+function removePiece(uid) {
+  state.pieces = state.pieces.filter(p => p.uid !== uid);
+  if (selectedUid === uid) selectedUid = null;
+  markCustom();
+  commit({ fly: true });
+}
+function turnSelected(delta) {
+  const p = selectedUid != null ? pieceByUid(selectedUid) : null;
+  if (!p) return;
+  p.rot = snapTo(p.rot + delta, SNAP_TURN);
+  markCustom();
+  commit();
+}
+
+/* ---------- View controls dock ---------- */
+function setAutoRotate(on) {
+  controls.autoRotate = on;
+  const b = document.getElementById('rotBtn');
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', on);
+  b.querySelector('.i-pause').style.display = on ? '' : 'none';
+  b.querySelector('.i-play').style.display = on ? 'none' : '';
+}
+function clearViewChip() { document.querySelectorAll('.views button').forEach(b => b.classList.remove('active')); }
+
+function setupDock() {
+  const dock = document.getElementById('dock');
+  const toggle = document.getElementById('dockToggle');
+  toggle.addEventListener('click', () => {
+    const collapsed = dock.classList.toggle('collapsed');
+    toggle.setAttribute('aria-expanded', !collapsed);
+    toggle.title = collapsed ? 'Show view controls' : 'Hide view controls';
+    toggle.setAttribute('aria-label', toggle.title);
+  });
+
+  document.getElementById('rotBtn').addEventListener('click', () => setAutoRotate(!controls.autoRotate));
+  const speed = document.getElementById('speed'), out = document.getElementById('speedOut');
+  const applySpeed = () => {
+    const v = parseFloat(speed.value);
+    controls.autoRotateSpeed = BASE_ROTATE_SPEED * v * rotateDir;
+    out.textContent = v.toFixed(1) + '×';
+    speed.style.setProperty('--p', ((v - speed.min) / (speed.max - speed.min) * 100) + '%');
+  };
+  speed.addEventListener('input', () => { applySpeed(); if (!controls.autoRotate) setAutoRotate(true); });
+  document.getElementById('dirBtn').addEventListener('click', () => { rotateDir *= -1; applySpeed(); if (!controls.autoRotate) setAutoRotate(true); });
+  applySpeed();
+
+  // Pan and zoom buttons: tap for a nudge, hold to keep going
+  document.querySelectorAll('[data-nav]').forEach(btn => {
+    const action = btn.dataset.nav;
+    let holdTimer = null;
+    const stop = () => { clearTimeout(holdTimer); if (nav.hold === action) nav.hold = null; btn.classList.remove('held'); };
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+      hideHint(); clearViewChip();
+      navImpulse(action, NAV_TAP);
+      btn.classList.add('held');
+      holdTimer = setTimeout(() => { nav.hold = action; }, 260);
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, stop));
+    btn.addEventListener('click', e => { if (e.detail === 0) { clearViewChip(); navImpulse(action, NAV_TAP); } });   // keyboard
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => goView('iso'));
+  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => goView(b.dataset.view)));
+
+  const fs = document.getElementById('fsBtn');
+  if (!document.fullscreenEnabled) fs.hidden = true;
+  fs.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(() => toast('Full screen is not available here'));
+  });
+
+  document.getElementById('shotBtn').addEventListener('click', () => {
+    try {
+      const a = document.createElement('a');
+      a.href = capture({ dir: currentDir(), width: 2000, height: 1250 });
+      a.download = 'furniture-group.png';
+      document.body.append(a); a.click(); a.remove();
+      toast('Picture saved');
+    } catch (e) { console.error(e); toast('Could not save the picture'); }
+  });
+
+  document.getElementById('stageBtn').addEventListener('click', () => {
+    const light = document.body.dataset.stage !== 'light';
+    document.body.dataset.stage = light ? 'light' : 'night';
+    dust.visible = !light;
+    floorDisc.material.color.set(light ? 0x4f6670 : 0xffffff);
+    shadowCatcher.material.opacity = light ? 0.22 : 0.32;
+    pulse();
+  });
+}
+
+function goView(name) {
+  nav.vx = nav.vy = nav.vz = 0;
+  document.querySelectorAll('.views button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  flyTo(VIEWS[name], home.dist, home.target, 1200);
+}
+const currentDir = () => camera.position.clone().sub(controls.target).normalize();
+
+// Points that outline the furniture: the 8 corners of every mesh's own box, in world space. Tighter than one box
+// round the whole group, so a round table or a turned chair is not framed by empty corners.
+function groupOutline() {
+  const pts = [], v = new THREE.Vector3();
+  wraps.forEach(w => {
+    w.updateMatrixWorld(true);
+    w.traverse(o => {
+      if (!o.isMesh || !o.visible) return;
+      const g = o.geometry;
+      if (!g.boundingBox) g.computeBoundingBox();
+      const b = g.boundingBox;
+      for (let i = 0; i < 8; i++) {
+        v.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(o.matrixWorld);
+        pts.push(v.clone());
+      }
+    });
+  });
+  return pts;
+}
+
+// Zoom extents: aim the camera along `dir` and move it until the furniture is centred and fills FILL of the
+// picture's width or height, whichever is tighter. A few rounds settle the perspective.
+const CAPTURE_FILL = 0.9;    // share of the picture the group fills (0.9 leaves a 5% margin on each side)
+const CAPTURE_FOV = 24;      // lens for pictures (degrees): longer than the live view's, like a product photo,
+                             // so the nearest piece is not blown up out of proportion
+function fitCamera(dir, aspect, fill = CAPTURE_FILL) {
+  const pts = groupOutline();
+  const d = dir.clone().normalize();
+  const target = home.target.clone();
+  if (!pts.length) { camera.position.copy(target).addScaledVector(d, home.dist); camera.lookAt(target); return; }
+  const box = new THREE.Box3().setFromPoints(pts);
+  box.getCenter(target);
+  let dist = box.getSize(new THREE.Vector3()).length() / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  const right = new THREE.Vector3(), up = new THREE.Vector3(), p = new THREE.Vector3();
+  for (let round = 0; round < 8; round++) {
+    camera.position.copy(target).addScaledVector(d, dist);
+    camera.lookAt(target);
+    camera.near = dist / 100; camera.far = dist * 20;
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld(true);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    pts.forEach(q => {
+      p.copy(q).project(camera);
+      x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+    });
+    // Slide the aim so the outline is centred, then scale the distance so it fills the frame.
+    const halfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), halfW = halfH * aspect;
+    right.setFromMatrixColumn(camera.matrixWorld, 0); up.setFromMatrixColumn(camera.matrixWorld, 1);
+    target.addScaledVector(right, (x0 + x1) / 2 * halfW).addScaledVector(up, (y0 + y1) / 2 * halfH);
+    const extent = Math.max((x1 - x0) / 2, (y1 - y0) / 2) / fill;
+    dist *= extent;
+    if (Math.abs(extent - 1) < 0.002 && Math.abs(x0 + x1) < 0.004 && Math.abs(y0 + y1) < 0.004) break;
+  }
+  camera.position.copy(target).addScaledVector(d, dist);
+  camera.lookAt(target);
+  camera.updateProjectionMatrix();
+}
+
+// Renders the group to a PNG (transparent background) from direction `dir`, zoomed to fit the furniture.
+// fill: how much of the picture the group fills (see CAPTURE_FILL).
+function capture({ dir, width = 1600, height = 1000, fill = CAPTURE_FILL }) {
+  const prevPR = renderer.getPixelRatio();
+  const savedPos = camera.position.clone(), savedAspect = camera.aspect;
+  const savedNear = camera.near, savedFar = camera.far, savedFov = camera.fov;
+  const fx = [floorDisc, pulseRing, dust, selRing], vis = fx.map(o => o && o.visible);
+  fx.forEach(o => { if (o) o.visible = false; });
+  settleAll();                                         // every piece in place and full size, even mid-animation
+  try {
+    renderer.setPixelRatio(1);
+    renderer.setSize(width, height, false);
+    camera.clearViewOffset();
+    camera.aspect = width / height;
+    camera.fov = CAPTURE_FOV;
+    camera.updateProjectionMatrix();
+    fitCamera(dir, camera.aspect, fill);
+    renderer.render(scene, camera);
+    return renderer.domElement.toDataURL('image/png');
+  } finally {
+    fx.forEach((o, i) => { if (o) o.visible = vis[i]; });
+    renderer.setPixelRatio(prevPR);
+    renderer.setSize(innerWidth, innerHeight);
+    camera.aspect = savedAspect;
+    camera.near = savedNear; camera.far = savedFar; camera.fov = savedFov;
+    camera.position.copy(savedPos);
+    camera.lookAt(controls.target);
+    camera.updateProjectionMatrix();
+    applyViewOffset();
+  }
+}
+
+
+/* ---------- Quote cart on the Alumatech website ---------- */
+// On the website, "Add to quote request" puts the configured pieces in the site's quote cart (the same cart as the
+// GET QUOTE button on the product pages), with the frame and fabric or top, then opens the cart. The site lists the
+// models it can add (a Code Snippets snippet on WordPress); anything else, or a copy opened elsewhere, keeps "Email for a quote".
+var quoteCart = { models: new Set(), url: '' };   // var: hoisted, safe before this line runs
+async function loadQuoteCart() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  try {
+    const r = await fetch(location.origin + '/wp-admin/admin-ajax.php?action=alu_cfg_models', { credentials: 'same-origin', cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    quoteCart.models = new Set((j.models || []).map(s => String(s).toUpperCase()));
+    quoteCart.url = j.cart || '';
+  } catch (e) { /* not on the website: email only */ }
+  refreshQuoteMode();
+}
+// Group builder: on when any piece can go in the cart (the site notes any it could not add).
+function cartMode() { return !!(quoteCart && quoteCart.url) && bomItems().some(it => quoteCart.models.has(it.m.id.toUpperCase())); }
+function refreshQuoteMode() {
+  refreshSamples();
+  const on = cartMode(), show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
+  document.getElementById('cartBtn').hidden = !on;
+  show('emailBtn', !on); show('detailsLabel', !on); show('quoteForm', !on); show('quoteHint', !on);
+  document.getElementById('cartHint').hidden = !on;
+}
+// Sample requests: the frame color and/or fabric currently chosen.
+function samplesWanted() {
+  const c = COLORS[state.frame], f = fabricById(state.fabric), hasFabric = bomItems().some(it => it.m.type === 'seat');
+  return {
+    frame: document.getElementById('sampleFrame').checked && c ? c.label : '',
+    fabric: hasFabric && document.getElementById('sampleFabric').checked && f ? f.label : ''
+  };
+}
+function refreshSamples() {
+  const c = COLORS[state.frame], f = fabricById(state.fabric), hasFabric = bomItems().some(it => it.m.type === 'seat');
+  document.getElementById('sampleFrameText').textContent = c ? c.label : '—';
+  document.getElementById('sampleFabricText').textContent = f ? f.label : '—';
+  document.getElementById('sampleFabricRow').style.display = hasFabric ? '' : 'none';
+}
+function sampleLines() {
+  const sm = samplesWanted(), parts = [];
+  if (sm.frame) parts.push(`frame color ${sm.frame}`);
+  if (sm.fabric) parts.push(`fabric ${sm.fabric}`);
+  return parts.length ? [`Samples requested: ${parts.join(', ')}`] : [];
+}
+function addToQuoteCart() {
+  refreshQuoteMode();
+  if (!cartMode()) return;
+  const c = COLORS[state.frame], f = fabricById(state.fabric);
+  const items = bomItems().map(it => ({
+    model: it.m.id, qty: it.qty, frame: c ? c.label : '',
+    fabric: it.m.type === 'seat' && f ? f.label : '',
+    top: it.top ? it.top.name : ''
+  }));
+  const form = document.createElement('form');
+  form.method = 'post'; form.action = quoteCart.url; form.target = '_top';   // the whole page, also inside a product page
+  const inp = document.createElement('input');
+  inp.type = 'hidden'; inp.name = 'alu_cfg_quote';
+  inp.value = JSON.stringify({ ref: QUOTE_REF, samples: samplesWanted(), group: configTitle(), link: shareLink(), items });
+  form.append(inp); document.body.append(form);
+  document.getElementById('cartBtn').disabled = true;
+  toast('Adding to your quote request…');
+  form.submit();
+}
+
+/* ---------- Quote tab: summary, PDF and email ---------- */
+const QUOTE_REF = (() => {
+  const d = new Date(), pad = n => String(n).padStart(2, '0');
+  return `Q-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+})();
+const FORM_FIELDS = ['qName', 'qCompany', 'qEmail', 'qPhone', 'qLocation', 'qNotes'];
+const isQuoteOpen = () => !document.getElementById('pane-quote').hidden;
+
+function setupQuote() {
+  document.getElementById('quoteRef').textContent = QUOTE_REF;
+  const hint = document.getElementById('quoteHint');
+  hint.append('Opens your email app addressed to ');
+  const b = document.createElement('b'); b.textContent = QUOTE_EMAIL; hint.append(b);
+  hint.append(' with this configuration filled in. Save the PDF first if you would like to attach it.');
+
+  // Remember what the customer typed (this browser only)
+  FORM_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    try { el.value = localStorage.getItem('fgb.' + id) || ''; } catch (e) {}
+    el.addEventListener('input', () => {
+      try { localStorage.setItem('fgb.' + id, el.value); } catch (e) {}
+      if (id === 'qName') document.getElementById('qNameWrap').classList.remove('invalid');
+    });
+  });
+
+  document.getElementById('emailBtn').addEventListener('click', emailQuote);
+  document.getElementById('pdfBtn').addEventListener('click', printPDF);
+  document.getElementById('linkBtn').addEventListener('click', async () => {
+    const url = location.href;
+    try { await navigator.clipboard.writeText(url); toast('Link copied'); }
+    catch (e) { prompt('Copy this link:', url); }
+  });
+  document.getElementById('cartBtn').addEventListener('click', addToQuoteCart);
+  loadQuoteCart();
+}
+
+// The bill of materials: each model with its quantity.
+// A table with tops is listed once per top pattern, with the pattern in its name.
+function bomItems() {
+  const counts = new Map();
+  [...tablePieces(), ...seatPieces()].forEach(p => {
+    const k = tplKey(p.id, p.top), it = counts.get(k);
+    if (it) it.qty++;
+    else {
+      const m = modelById(p.id), t = topOf(m, p.top);
+      counts.set(k, { m, qty: 1, top: t, name: t ? `${m.name} · ${t.name} top` : m.name, code: t ? `${m.id}-${t.id}` : m.id });
+    }
+  });
+  return [...counts.values()];
+}
+const customer = () => Object.fromEntries(FORM_FIELDS.map(id => [id, document.getElementById(id).value.trim()]));
+const configTitle = () => { const n = seatPieces().length; return `${layoutName()} · ${n} seat${n === 1 ? '' : 's'}`; };
+const shareLink = () => /^https?:/.test(location.protocol) ? location.href : '';
+
+function refreshQuote() {
+  refreshQuoteMode();
+  try { document.getElementById('quotePreview').src = capture({ dir: currentDir(), width: 1280, height: 800 }); }
+  catch (e) { console.warn('Preview skipped:', e); }
+
+  document.getElementById('bomList').replaceChildren(...bomItems().map(({ name, code, qty }) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="qty"></span><span class="nm"></span><span class="code"></span>';
+    li.querySelector('.qty').textContent = qty;
+    li.querySelector('.nm').textContent = name;
+    li.querySelector('.code').textContent = code;
+    return li;
+  }));
+
+  const c = COLORS[state.frame], f = fabricById(state.fabric);
+  const row = (label, name, css) => {
+    const d = document.createElement('div');
+    d.className = 'finish';
+    d.innerHTML = '<span class="sw"></span><span><small></small><b></b></span>';
+    d.querySelector('.sw').style.background = css;
+    d.querySelector('small').textContent = label;
+    d.querySelector('b').textContent = name;
+    return d;
+  };
+  document.getElementById('finishRows').replaceChildren(
+    row('Frame', c.label, frameSwatchCSS(c)),
+    row('Fabric', f ? f.label : '—', f ? `url("${f.thumbOk || f.thumb}") center / cover, #888` : '#888'));
+}
+
+function emailQuote() {
+  const cu = customer();
+  if (!cu.qName) {
+    const w = document.getElementById('qNameWrap');
+    w.classList.add('invalid');
+    document.getElementById('qName').focus();
+    toast('Please add your name first');
+    return;
+  }
+  const c = COLORS[state.frame], f = fabricById(state.fabric), link = shareLink();
+  const lines = [
+    'Hello,', '',
+    'I would like a quote for this furniture group:', '',
+    `Reference: ${QUOTE_REF}`,
+    `Layout: ${configTitle()}`, '',
+    'Pieces:',
+    ...bomItems().map(({ name, code, qty }) => `  ${qty} x ${name} (${code})`), '',
+    `Frame finish: ${c.label}`,
+    `Fabric: ${f ? f.label : '-'}`,
+    ...sampleLines(),
+    ...(link ? ['', `Configuration link: ${link}`] : []), '',
+    'My details:',
+    `  Name: ${cu.qName}`,
+    ...(cu.qCompany ? [`  Company: ${cu.qCompany}`] : []),
+    ...(cu.qEmail ? [`  Email: ${cu.qEmail}`] : []),
+    ...(cu.qPhone ? [`  Phone: ${cu.qPhone}`] : []),
+    ...(cu.qLocation ? [`  Project location: ${cu.qLocation}`] : []),
+    ...(cu.qNotes ? ['', 'Notes:', cu.qNotes] : []),
+    '', 'Thank you,', cu.qName
+  ];
+  const subject = `Quote request ${QUOTE_REF}: ${configTitle()}`;
+  const url = `mailto:${QUOTE_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\r\n'))}`;
+  const a = document.createElement('a');
+  a.href = url;
+  document.body.append(a); a.click(); a.remove();
+  toast('Opening your email app…');
+}
+
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+async function printPDF() {
+  const btn = document.getElementById('pdfBtn');
+  btn.disabled = true;
+  try {
+    let hero = '', front = '', top = '';
+    try {
+      hero = capture({ dir: currentDir(), width: 2000, height: 1150 });
+      front = capture({ dir: VIEWS.front, width: 1200, height: 800 });
+      top = capture({ dir: VIEWS.top, width: 1200, height: 800 });
+    } catch (e) { console.warn('Pictures skipped:', e); }
+
+    const c = COLORS[state.frame], f = fabricById(state.fabric), cu = customer(), link = shareLink();
+    const items = bomItems(), total = items.reduce((a, it) => a + it.qty, 0);
+    const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    const frameSw = c.texture ? `<span class="sw"><img src="${esc(c.thumbUrl || encodeURI(c.texture))}" alt=""></span>` : `<span class="sw" style="background:${esc(c.hex)}"></span>`;
+    const fabricSw = f ? `<span class="sw"><img src="${esc(f.thumbOk || f.thumb)}" alt=""></span>` : '<span class="sw"></span>';
+    const person = [['Name', cu.qName], ['Company', cu.qCompany], ['Email', cu.qEmail], ['Phone', cu.qPhone], ['Location', cu.qLocation]]
+      .filter(([, v]) => v).map(([k, v]) => `<div><span>${k}</span>${esc(v)}</div>`).join('');
+
+    const sheet = document.getElementById('printSheet');
+    sheet.innerHTML = `
+      <div class="ps-head">
+        <div><div class="ps-eyebrow">Furniture group configuration</div><div class="ps-title">${esc(configTitle())}</div></div>
+        <div class="ps-meta"><b>${esc(QUOTE_REF)}</b><br>${esc(date)}</div>
+      </div>
+      <div class="ps-hero">${hero ? `<img src="${hero}" alt="">` : ''}</div>
+      <div class="ps-views">
+        <figure>${front ? `<img src="${front}" alt="">` : ''}<figcaption>Front</figcaption></figure>
+        <figure>${top ? `<img src="${top}" alt="">` : ''}<figcaption>Plan</figcaption></figure>
+      </div>
+      <div class="ps-grid">
+        <div>
+          <p class="ps-h">Pieces</p>
+          <table class="ps-table">
+            <thead><tr><th>Qty</th><th>Model</th><th style="text-align:right">Code</th></tr></thead>
+            <tbody>${items.map(({ name, code, qty }) => `<tr><td class="q">${qty}</td><td>${esc(name)}</td><td class="c">${esc(code)}</td></tr>`).join('')}</tbody>
+            <tfoot><tr><td class="q">${total}</td><td>Pieces in total</td><td></td></tr></tfoot>
+          </table>
+        </div>
+        <div>
+          <p class="ps-h">Finishes</p>
+          <div class="ps-fin">${frameSw}<div><small>Frame</small><b>${esc(c.label)}</b></div></div>
+          <div class="ps-fin">${fabricSw}<div><small>Fabric</small><b>${esc(f ? f.label : '—')}</b></div></div>
+          ${person || cu.qNotes ? `<p class="ps-h" style="margin-top:14px">Prepared for</p><div class="ps-kv">${person}</div>${cu.qNotes ? `<div class="ps-notes">${esc(cu.qNotes)}</div>` : ''}` : ''}
+        </div>
+      </div>
+      <div class="ps-foot">
+        <div>Request a quote: <b>${esc(QUOTE_EMAIL)}</b> · reference ${esc(QUOTE_REF)}</div>
+        ${link ? `<div class="ps-link">${esc(link)}</div>` : ''}
+      </div>`;
+
+    // Wait for the swatch images so they make it onto the page
+    const imgs = [...sheet.querySelectorAll('img')].filter(i => !i.complete);
+    await Promise.race([
+      Promise.all(imgs.map(i => new Promise(r => { i.onload = i.onerror = r; }))),
+      new Promise(r => setTimeout(r, 2500))
+    ]);
+    window.print();
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ---------- Frame finish ---------- */
+function selectFrame(i) {
+  const c = COLORS[i];
+  latestFrame = i; // ignore results of older, slower requests
+  state.frame = i;
+  document.querySelectorAll('.color').forEach(b => b.classList.toggle('selected', +b.dataset.idx === i));
+  updateSummary();
+  saveHash();
+  if (framedOnce) pulse();
+
+  const apply = texture => {
+    if (latestFrame !== i) return;
+    frameMat.map = texture;
+    frameMat.color.set(texture ? '#ffffff' : c.hex);
+    frameMat.roughness = c.roughness ?? FRAME_ROUGHNESS;
+    frameMat.envMapIntensity = c.reflect ?? 1;
+    frameMat.needsUpdate = true;
+  };
+
+  if (!c.texture) return apply(null);                       // solid color
+  if (frameTextures.has(i)) return apply(frameTextures.get(i));
+
+  new THREE.TextureLoader().load(
+    c.texture,
+    texture => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(FRAME_TEXTURE_REPEAT, FRAME_TEXTURE_REPEAT);
+      frameTextures.set(i, texture);
+      apply(texture);
+    },
+    undefined,
+    err => console.error(`Could not load frame texture "${c.label}"`, err)
+  );
+}
+
+/* ---------- Fabric ---------- */
+function selectFabric(id) {
+  state.fabric = id;
+  document.querySelectorAll('.fabric-swatch').forEach(b => b.classList.toggle('selected', b.dataset.fabric === id));
+  updateSummary();
+  saveHash();
+  if (framedOnce) pulse();
+  applyFabric(id);
+}
+
+function applyFabric(id) {
+  latestFabric = id; // ignore results of older, slower requests
+
+  const apply = ({ map, bump }) => {
+    if (latestFabric !== id) return;
+    fabricMat.map = map;
+    fabricMat.color.set('#ffffff');
+    fabricMat.bumpMap = bump;
+    fabricMat.bumpScale = WEAVE_BUMP;
+    fabricMat.needsUpdate = true;
+  };
+
+  if (fabricCache.has(id)) return apply(fabricCache.get(id));
+
+  const fabric = FABRICS.find(f => f.id === id);
+  new THREE.TextureLoader().load(
+    fabric.url,
+    texture => {
+      configureFabricTexture(texture);
+      const entry = { map: texture, bump: WEAVE_BUMP > 0 ? makeWeaveBump(texture) : null };
+      fabricCache.set(id, entry);
+      apply(entry);
+    },
+    undefined,
+    err => console.error(`Could not load fabric "${id}"`, err)
+  );
+}
+
+// The swatch repeat is built into each model's fabric UVs (fabricRepeat in MODELS), so the texture itself does not repeat.
+function configureFabricTexture(t, srgb = true) {
+  t.flipY = false; // required for glTF UVs
+  t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.wrapS = THREE.ClampToEdgeWrapping; // width: one tile, so no seam
+  t.wrapT = THREE.RepeatWrapping;       // length: stripes run along it, so tiling is invisible
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+}
+
+// Builds a grayscale relief map of just the weave: the image's brightness minus a blurred copy of itself,
+// so large stripes and color changes cancel out and only the fine thread pattern remains.
+function makeWeaveBump(texture) {
+  try {
+    const N = 512;
+    const c = document.createElement('canvas');
+    c.width = c.height = N;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(texture.image, 0, 0, N, N);
+    const data = g.getImageData(0, 0, N, N); // fails only if the image has no CORS access
+    const px = data.data;
+    const lum = new Float32Array(N * N);
+    for (let i = 0; i < N * N; i++) lum[i] = (0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]) / 255;
+    const low = boxBlur(lum, N, 6);
+    for (let i = 0; i < N * N; i++) {
+      const v = Math.min(1, Math.max(0, 0.5 + (lum[i] - low[i]) * 2.5)) * 255;
+      px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v;
+      px[i * 4 + 3] = 255;
+    }
+    g.putImageData(data, 0, 0);
+    const bump = new THREE.CanvasTexture(c);
+    configureFabricTexture(bump, false);
+    return bump;
+  } catch (err) {
+    console.warn('Weave relief skipped:', err);
+    return null;
+  }
+}
+
+// Separable box blur that wraps around the edges (the texture tiles).
+function boxBlur(src, n, r) {
+  const w = 2 * r + 1, tmp = new Float32Array(n * n), out = new Float32Array(n * n);
+  for (let y = 0; y < n; y++) {
+    let s = 0;
+    for (let k = -r; k <= r; k++) s += src[y * n + ((k + n) % n)];
+    for (let x = 0; x < n; x++) {
+      tmp[y * n + x] = s / w;
+      s += src[y * n + ((x + r + 1) % n)] - src[y * n + ((x - r + n) % n)];
+    }
+  }
+  for (let x = 0; x < n; x++) {
+    let s = 0;
+    for (let k = -r; k <= r; k++) s += tmp[((k + n) % n) * n + x];
+    for (let y = 0; y < n; y++) {
+      out[y * n + x] = s / w;
+      s += tmp[((y + r + 1) % n) * n + x] - tmp[((y - r + n) % n) * n + x];
+    }
+  }
+  return out;
+}
+
+/* ---------- Loop ---------- */
+function onResize() {
+  camera.aspect = innerWidth / innerHeight;
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  applyViewOffset();
+}
+
+function animate() {
+  const dt = Math.min(clock.getDelta(), 0.05), now = performance.now();
+
+  if (tween) applyTween(now);
+  else { applyNav(dt); controls.update(dt); }
+
+  // Pieces dropping in, and gliding to new spots
+  wraps.forEach(w => {
+    const en = w.userData.enter;
+    if (en) {
+      const t = THREE.MathUtils.clamp((now - en.t0) / 650, 0, 1);
+      w.scale.setScalar(Math.max(0.001, easeOutBack(t)));
+      w.position.y = (1 - t) * (1 - t) * home.height * 0.6;
+      if (t >= 1) { w.userData.enter = null; w.scale.setScalar(1); w.position.y = 0; }
+    }
+    const g = w.userData.glide;
+    if (g) {
+      const k = Math.min(1, (now - g.t0) / 450), e = easeInOut(k);
+      w.position.x = g.fx + g.dx * e;
+      w.position.z = g.fz + g.dz * e;
+      w.rotation.y = g.fr + g.dr * e;
+      if (k >= 1) w.userData.glide = null;
+    }
+  });
+
+  // Glowing ring under the piece selected on the floor plan
+  const sw = selectedUid != null ? wraps.get(selectedUid) : null;
+  selRing.visible = !!sw;
+  if (sw) {
+    const fp = fpOf(sw.userData.model);
+    selRing.position.x = sw.position.x;
+    selRing.position.z = sw.position.z;
+    selRing.scale.setScalar(Math.hypot(fp.w, fp.d) / 2 + 0.08);
+    selRing.material.opacity = 0.55 + 0.35 * Math.sin(now / 260);
+  }
+
+  // Pulse ring sweeping out across the floor
+  if (pulseT < 1) {
+    pulseT = Math.min(1, pulseT + dt / 1.3);
+    const e = 1 - Math.pow(1 - pulseT, 3);
+    pulseRing.scale.setScalar(home.radius * (0.5 + 1.1 * e));
+    pulseRing.material.opacity = (1 - pulseT) * 0.85;
+  }
+
+  // Dust drifting up through the light
+  if (dust.visible) {
+    const p = dust.geometry.attributes.position, sp = dust.userData.speed;
+    for (let i = 0; i < p.count; i++) {
+      let y = p.getY(i) + sp[i] * dt;
+      if (y > 1) y -= 1;
+      p.setY(i, y);
+    }
+    p.needsUpdate = true;
+    dust.rotation.y += dt * 0.025;
+  }
+
+  renderer.render(scene, camera);
+}
+
+init();   // start last, once every constant above is defined
+</script>
+</body>
+</html>
