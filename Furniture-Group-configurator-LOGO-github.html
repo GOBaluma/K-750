@@ -115,7 +115,7 @@
     background: var(--accent-2); box-shadow: 0 0 0 0 rgba(63, 179, 218, .7); animation: ping 2s infinite; }
   @keyframes ping { 70% { box-shadow: 0 0 0 7px rgba(63, 179, 218, 0); } 100% { box-shadow: 0 0 0 0 rgba(63, 179, 218, 0); } }
 
-  .tab-content { flex: 1; min-height: 160px; max-height: calc(100vh - 290px); overflow: auto; padding: 4px; margin: -4px;
+  .tab-content { flex: 1; min-height: 120px; overscroll-behavior: contain; max-height: calc(100vh - 290px); overflow: auto; padding: 4px; margin: -4px;
     scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .2) transparent; }
   [role="tabpanel"] { animation: fadeUp .4s ease both; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
@@ -356,7 +356,10 @@
     #printSheet { display: block; font-family: var(--sans); color: #10232b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
   .ps-head { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 12px; border-bottom: 2px solid #10232b; }
-  .ps-logo { display: block; height: 34px; width: auto; margin: 0 0 10px -4px; }
+  .ps-logo { display: block; height: 64px; width: auto; max-width: 3.6in; margin: 0 0 10px -2px; }
+  .ps-meta { flex: none; padding-left: 16px; }
+  .ps-co { margin-top: 8px; font-size: 9.5px; line-height: 1.5; color: #4a5a62; white-space: nowrap; }
+  .ps-co b { color: #21809f; font-size: 10px; letter-spacing: 0; }
   .ps-eyebrow { font-size: 9px; font-weight: 800; letter-spacing: .28em; text-transform: uppercase; color: #21809f; }
   .ps-title { font-family: var(--serif); font-size: 34px; line-height: 1; margin-top: 6px; }
   .ps-meta { text-align: right; font-size: 10px; line-height: 1.6; color: #4a5a62; }
@@ -413,11 +416,24 @@
       // offset* ignore the panel's entrance animation (a transform), so the note lands where the panel settles
       note.style.left = panel.offsetLeft + 'px';
       note.style.width = panel.offsetWidth + 'px';
+      const tc = panel.querySelector('.tab-content');
+      if (tc && panel.open) {
+        const above = tc.getBoundingClientRect().top - panel.getBoundingClientRect().top;   // unaffected by the entrance animation
+        const below = parseFloat(getComputedStyle(panel.querySelector('.panel-body')).paddingBottom) || 0;
+        const avail = window.innerHeight - panel.offsetTop - above - below - note.offsetHeight - 22;
+        const mh = Math.max(120, Math.floor(avail)) + 'px';
+        if (tc.style.maxHeight !== mh) tc.style.maxHeight = mh;
+        if (panel.style.maxHeight !== 'none') panel.style.maxHeight = 'none';
+      }
       note.style.top = (panel.offsetTop + panel.offsetHeight + 8) + 'px';
       note.classList.add('ready');
     };
     place();
-    if (window.ResizeObserver) new ResizeObserver(place).observe(panel);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => requestAnimationFrame(place));
+      ro.observe(panel);
+      ['summary', 'title'].forEach(id => { const el = document.getElementById(id); if (el) ro.observe(el); });   // chips or a long name wrapping
+    }
     panel.addEventListener('toggle', place);
     window.addEventListener('resize', place);
   });
@@ -640,6 +656,14 @@ const ASSET_VERSION = '2026-11-04c';
 
 // Where "Email for a quote" sends the request. Change it here if the address changes.
 const QUOTE_EMAIL = 'info@alumatech1.com';
+
+// Company details printed with the logo on saved pictures and the PDF quote.
+const COMPANY = {
+  address: '6063 17th Street East, Bradenton, FL 34203',
+  phone: '(941) 748-8880',
+  tollFree: '800-825-8826',
+  web: 'alumatechfurniture.com',
+};
 
 /* ---------- Table top patterns ---------- */
 // The CNC-cut top patterns. id = the pattern's code (it goes in the GLB file names and the share link),
@@ -1497,11 +1521,26 @@ function logoImage() {
       const cam = new THREE.OrthographicCamera(-hw, hw, hh, -hh, 0.1, 10);
       cam.position.set(0, 0, 3);
       r.render(sc, cam);
-      return r.domElement.toDataURL('image/png');
+      return cropToInk(r.domElement);
     } catch (e) { console.warn('Logo picture failed', e); return null; }
     finally { r.dispose(); r.forceContextLoss(); }
   });
   return logoPng;
+}
+// Trim the empty margin around the rendered logo, so its size on the page is the size of the letters.
+function cropToInk(src) {
+  const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  const g = c.getContext('2d'); g.drawImage(src, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) return src.toDataURL('image/png');
+  const pad = 6, w = Math.min(c.width, x1 - x0 + 1 + pad * 2), h = Math.min(c.height, y1 - y0 + 1 + pad * 2);
+  const o = document.createElement('canvas'); o.width = w; o.height = h;
+  o.getContext('2d').drawImage(c, Math.max(0, x0 - pad), Math.max(0, y0 - pad), w, h, 0, 0, w, h);
+  return o.toDataURL('image/png');
 }
 const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
 // Puts the logo in the bottom-right corner of a picture (a PNG data URL); returns the new data URL.
@@ -1514,8 +1553,26 @@ async function stampLogo(url) {
     c.width = pic.width; c.height = pic.height;
     const g = c.getContext('2d');
     g.drawImage(pic, 0, 0);
-    const mw = pic.width * 0.17, mh = mw * logo.height / logo.width, pad = pic.width * 0.022;
-    g.drawImage(logo, pic.width - mw - pad, pic.height - mh - pad, mw, mh);
+    // A dark card in the bottom-right corner: the logo, then the address, phone numbers and website under it.
+    const lines = [COMPANY.address, `${COMPANY.phone}  ·  Toll free ${COMPANY.tollFree}`, COMPANY.web];
+    const W = pic.width, margin = W * 0.018, inner = W * 0.2, padX = W * 0.012, padY = W * 0.011;
+    const fs = Math.round(W * 0.0098), lh = fs * 1.45;
+    const lw = inner, lhgt = lw * logo.height / logo.width;
+    const cw = inner + padX * 2, ch = padY + lhgt + fs * 0.6 + lh * lines.length + padY * 0.7;
+    const cx = W - cw - margin, cy = pic.height - ch - margin, r = W * 0.008;
+    g.save();
+    g.beginPath(); g.moveTo(cx + r, cy); g.arcTo(cx + cw, cy, cx + cw, cy + ch, r); g.arcTo(cx + cw, cy + ch, cx, cy + ch, r);
+    g.arcTo(cx, cy + ch, cx, cy, r); g.arcTo(cx, cy, cx + cw, cy, r); g.closePath();
+    g.fillStyle = 'rgba(8, 24, 54, .72)'; g.fill();
+    g.strokeStyle = 'rgba(255, 255, 255, .16)'; g.lineWidth = Math.max(1, W * 0.0007); g.stroke();
+    g.drawImage(logo, cx + padX, cy + padY, lw, lhgt);
+    g.fillStyle = '#eef4f7'; g.textAlign = 'center'; g.textBaseline = 'top';
+    g.font = `600 ${fs}px Manrope, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif`;
+    lines.forEach((t, k) => {
+      if (k === lines.length - 1) { g.fillStyle = '#8fd3ea'; g.font = `700 ${fs}px Manrope, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif`; }
+      g.fillText(t, cx + cw / 2, cy + padY + lhgt + fs * 0.6 + k * lh, inner);
+    });
+    g.restore();
     return c.toDataURL('image/png');
   } catch (e) { console.warn('Logo stamp failed', e); return url; }
 }
@@ -3056,7 +3113,7 @@ async function printPDF() {
     sheet.innerHTML = `
       <div class="ps-head">
         <div>${logoSrc ? `<img class="ps-logo" src="${logoSrc}" alt="Alumatech">` : ""}<div class="ps-eyebrow">Furniture group configuration</div><div class="ps-title">${esc(configTitle())}</div></div>
-        <div class="ps-meta"><b>${esc(QUOTE_REF)}</b><br>${esc(date)}</div>
+        <div class="ps-meta"><b>${esc(QUOTE_REF)}</b><br>${esc(date)}<div class="ps-co">${esc(COMPANY.address)}<br>${esc(COMPANY.phone)} · Toll free ${esc(COMPANY.tollFree)}<br><b>${esc(COMPANY.web)}</b></div></div>
       </div>
       <div class="ps-hero">${hero ? `<img src="${hero}" alt="">` : ''}</div>
       <div class="ps-views">
