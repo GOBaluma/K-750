@@ -720,6 +720,14 @@ const MODELS = [
   { id: 'K-782',   line: 'kona', name: 'K-782 Kona Sofa',          type: 'seat',  file: 'K-782.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
   { id: 'K-716',   line: 'kona', name: 'K-716 Kona Chaise Lounge', type: 'seat',  file: 'K-716-7.glb',        fabricRepeat: 1,    normalizeFrameUV: false },
   { id: 'K-715',   line: 'kona', name: 'K-715 Kona Ottoman',       type: 'seat',  file: 'K-715.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  // More Kona seats
+  { id: 'K-751', line: 'kona', name: 'K-751 Kona Dining Chair', type: 'seat', file: 'K-751.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'K-752', line: 'kona', name: 'K-752 Kona Balcony Chair', type: 'seat', file: 'K-752.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'K-7452', line: 'kona', name: 'K-7452 Kona High Back Balcony Chair', type: 'seat', file: 'K-7452.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'K-7652', line: 'kona', name: 'K-7652 Kona Swivel Balcony Chair', type: 'seat', file: 'K-7652.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'K-74652', line: 'kona', name: 'K-74652 Kona High Back Swivel Balcony Chair', type: 'seat', file: 'K-74652.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'K-775', line: 'kona', name: 'K-775 Kona Bar Chair', type: 'seat', file: 'K-775.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'K-7675', line: 'kona', name: 'K-7675 Kona Swivel Bar Chair', type: 'seat', file: 'K-7675.glb', fabricRepeat: 1, normalizeFrameUV: false },
   // Island Breeze line
   { id: 'I-750', line: 'island', name: 'I-750 Island Breeze Dining Chair (Commercial)', type: 'seat', file: 'I-750.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
   { id: 'I-751', line: 'island', name: 'I-751 Island Breeze Dining Chair', type: 'seat', file: 'I-751.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
@@ -767,8 +775,8 @@ const MODELS = [
 // no match uses the line's `fallback` for it, or else the line's first seat.
 // TO ADD A LINE: add it here, then give its seats `line: '<id>'` in MODELS.
 const LINES = [
-  { id: 'kona',   name: 'Kona',          fallback: { 'I-7450': 'K-7451' } },
-  { id: 'island', name: 'Island Breeze', fallback: { 'K-716': 'I-712', 'K-782': 'I-712', 'K-762': 'I-712', 'K-7462': 'I-712', 'K-7482': 'I-712' } },
+  { id: 'kona',   name: 'Kona',          fallback: { 'I-7450': 'K-7451', 'I-7151-52': 'K-752', 'I-7152': 'K-752', 'I-7151-75': 'K-775', 'I-7175': 'K-775' } },
+  { id: 'island', name: 'Island Breeze', fallback: { 'K-716': 'I-712', 'K-782': 'I-712', 'K-762': 'I-712', 'K-7462': 'I-712', 'K-7482': 'I-712', 'K-7452': 'I-752', 'K-74652': 'I-7652' } },
 ];
 const lineById = id => LINES.find(l => l.id === id) || LINES[0];
 const lineOfModel = m => m && m.line ? lineById(m.line) : null;
