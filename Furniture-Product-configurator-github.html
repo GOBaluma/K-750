@@ -189,6 +189,14 @@
   .color.selected .dot { transform: scale(1.06); box-shadow: 0 0 0 2px #081820, 0 0 0 4px var(--accent), 0 0 22px rgba(63, 179, 218, .55); }
   .color.selected .name { color: var(--ink); font-weight: 700; }
 
+  /* Product line switch */
+  .line-pick { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+  .line-pick .section-label { flex: none; margin: 0; letter-spacing: .14em; }
+  .seg { flex: 1; display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(0, 0, 0, .28); border: 1px solid var(--line); }
+  .seg button { flex: 1; padding: 6px 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); border-radius: 9px; transition: color .25s, background .25s; white-space: nowrap; }
+  .seg button:hover { color: var(--ink); }
+  .seg button.selected { color: #0a2733; background: var(--grad); }
+  .title.long { font-size: 25px; }
   .model-pick { margin: 0 0 12px; }
   .model-pick select { width: 64%; max-width: none; }
   .qty-row { margin: 10px 0 14px; padding: 8px 12px; }
@@ -444,7 +452,10 @@
   </summary>
   <div class="panel-body">
     <div id="summary" aria-live="polite"></div>
-    <div class="model-pick" id="modelPick" hidden><label class="field">Product <select id="modelSel" aria-label="Product"></select></label></div>
+    <div class="model-pick" id="modelPick" hidden>
+      <div class="line-pick"><div class="section-label">Product line</div><div class="seg" id="lineSeg" role="group" aria-label="Product line"></div></div>
+      <label class="field">Product <select id="modelSel" aria-label="Product"></select></label>
+    </div>
     <label class="row addon-row" id="addonRow" hidden>
       <span><small>Option</small><b id="addonText"></b></span>
       <span class="check"><input type="checkbox" id="addonChk"></span>
@@ -639,6 +650,7 @@ const DINING_HEIGHT_IN = 29.5;
 // TO ADD A NEW PRODUCT: upload its GLB to BASE, then add one entry to this list. Nothing else needs to change.
 //   id                short unique code (shown in the Pieces tab and kept in the share link)
 //   name              what customers see
+//   line              (seats) the product line: an id from LINES below ('kona', 'island').
 //   type              'seat'  = can be placed in the seating positions
 //                     'table' = can be used as the table
 //   file              GLB file name in BASE. Mesh names matter: a mesh whose name (or parent's name) contains
@@ -670,17 +682,36 @@ const DINING_HEIGHT_IN = 29.5;
 // The real size of every model, as exported, is printed in the browser console when the page loads.
 // GLBs may be meshopt-compressed (gltfpack -c); the decoder is set up in loadTemplate, so plain GLBs still load too.
 const MODELS = [
-  { id: 'K-750',   name: 'K-750 Kona Dining Chair',  type: 'seat',  file: 'K-750.glb',          fabricRepeat: 1,    normalizeFrameUV: false, tuck: true },
-  { id: 'K-761',   name: 'K-761 Kona Swivel Chair',  type: 'seat',  file: 'K-761.glb', yawDeg: 180, fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
-  { id: 'K-7451',  name: 'K-7451 Kona High Back Dining Chair', type: 'seat', file: 'K-7451.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
-  { id: 'K-7461',  name: 'K-7461 Kona High Back Swivel Chair', type: 'seat', file: 'K-7461.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
-  { id: 'K-712',   name: 'K-712 Kona Lounge Chair',  type: 'seat',  file: 'K-712.glb',          fabricRepeat: 1,    normalizeFrameUV: false, addOn: 'K-715' },
-  { id: 'K-7462',  name: 'K-7462 Kona High Back Loveseat', type: 'seat', file: 'K-7462.glb',    fabricRepeat: 1,    normalizeFrameUV: false },
-  { id: 'K-7482',  name: 'K-7482 Kona High Back Sofa',     type: 'seat', file: 'K-7482.glb',    fabricRepeat: 1,    normalizeFrameUV: false },
-  { id: 'K-762',   name: 'K-762 Kona Loveseat',      type: 'seat',  file: 'K-762.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
-  { id: 'K-782',   name: 'K-782 Kona Sofa',          type: 'seat',  file: 'K-782.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
-  { id: 'K-716',   name: 'K-716 Kona Chaise Lounge', type: 'seat',  file: 'K-716-7.glb',        fabricRepeat: 1,    normalizeFrameUV: false },
-  { id: 'K-715',   name: 'K-715 Kona Ottoman',       type: 'seat',  file: 'K-715.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-750',   line: 'kona', name: 'K-750 Kona Dining Chair',  type: 'seat',  file: 'K-750.glb',          fabricRepeat: 1,    normalizeFrameUV: false, tuck: true },
+  { id: 'K-761',   line: 'kona', name: 'K-761 Kona Swivel Chair',  type: 'seat',  file: 'K-761.glb', yawDeg: 180, fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'K-7451',  line: 'kona', name: 'K-7451 Kona High Back Dining Chair', type: 'seat', file: 'K-7451.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'K-7461',  line: 'kona', name: 'K-7461 Kona High Back Swivel Chair', type: 'seat', file: 'K-7461.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'K-712',   line: 'kona', name: 'K-712 Kona Lounge Chair',  type: 'seat',  file: 'K-712.glb',          fabricRepeat: 1,    normalizeFrameUV: false, addOn: 'K-715' },
+  { id: 'K-7462',  line: 'kona', name: 'K-7462 Kona High Back Loveseat', type: 'seat', file: 'K-7462.glb',    fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-7482',  line: 'kona', name: 'K-7482 Kona High Back Sofa',     type: 'seat', file: 'K-7482.glb',    fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-762',   line: 'kona', name: 'K-762 Kona Loveseat',      type: 'seat',  file: 'K-762.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-782',   line: 'kona', name: 'K-782 Kona Sofa',          type: 'seat',  file: 'K-782.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-716',   line: 'kona', name: 'K-716 Kona Chaise Lounge', type: 'seat',  file: 'K-716-7.glb',        fabricRepeat: 1,    normalizeFrameUV: false },
+  { id: 'K-715',   line: 'kona', name: 'K-715 Kona Ottoman',       type: 'seat',  file: 'K-715.glb',          fabricRepeat: 1,    normalizeFrameUV: false },
+  // Island Breeze line
+  { id: 'I-750', line: 'island', name: 'I-750 Island Breeze Dining Chair (Commercial)', type: 'seat', file: 'I-750.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'I-751', line: 'island', name: 'I-751 Island Breeze Dining Chair', type: 'seat', file: 'I-751.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'I-761', line: 'island', name: 'I-761 Island Breeze Swivel Rocker', type: 'seat', file: 'I-761.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'I-7450', line: 'island', name: 'I-7450 Island Breeze High Back Dining Chair (Commercial)', type: 'seat', file: 'I-7450.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'I-7451', line: 'island', name: 'I-7451 Island Breeze High Back Dining Chair', type: 'seat', file: 'I-7451.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'I-7461', line: 'island', name: 'I-7461 Island Breeze High Back Swivel Rocker', type: 'seat', file: 'I-7461.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'I-755', line: 'island', name: 'I-755 Island Breeze Sled Base Dining Chair', type: 'seat', file: 'I-755.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'I-757', line: 'island', name: 'I-757 Island Breeze Stacking Sand Chair', type: 'seat', file: 'I-757.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-712', line: 'island', name: 'I-712 Island Breeze Recliner', type: 'seat', file: 'I-712.glb', fabricRepeat: 1, normalizeFrameUV: false, addOn: 'I-715' },
+  { id: 'I-715', line: 'island', name: 'I-715 Island Breeze Ottoman', type: 'seat', file: 'I-715.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-752', line: 'island', name: 'I-752 Island Breeze Balcony Chair', type: 'seat', file: 'I-752.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-7652', line: 'island', name: 'I-7652 Island Breeze Swivel Balcony Chair', type: 'seat', file: 'I-7652.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-7151-52', line: 'island', name: 'I-7151-52 Island Breeze Armless Balcony Chair', type: 'seat', file: 'I-7151-52.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-7152', line: 'island', name: 'I-7152 Island Breeze Backless Balcony Stool', type: 'seat', file: 'I-7152.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-775', line: 'island', name: 'I-775 Island Breeze Bar Chair', type: 'seat', file: 'I-775.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-7675', line: 'island', name: 'I-7675 Island Breeze Swivel Bar Chair', type: 'seat', file: 'I-7675.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-7151-75', line: 'island', name: 'I-7151-75 Island Breeze Armless Bar Chair', type: 'seat', file: 'I-7151-75.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'I-7175', line: 'island', name: 'I-7175 Island Breeze Backless Bar Stool', type: 'seat', file: 'I-7175.glb', fabricRepeat: 1, normalizeFrameUV: false },
   // The I-42x76 and I-30x60 files end in -1: WordPress renames an upload whose name ends in -<number>x<number>
   // (it takes it for an image thumbnail), so on the website they are I-42x76-1.glb and I-30x60-1.glb.
   // Tables with interchangeable tops: the first top listed is the default (Mayan on every table). Add a pattern to a table's
@@ -703,6 +734,30 @@ const MODELS = [
   // { id: 'I-47',    name: 'I-47 Round Dining Table',  type: 'table', file: 'I-47.glb',           normalizeFrameUV: false, dining: true,
   //   tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
 ];
+
+// Product lines. A seat belongs to the line named by its `line`; tables have no line and go with every line.
+// Switching lines swaps each seat for the one with the same number in the new line (K-750 <-> I-750). A seat with
+// no match uses the line's `fallback` for it, or else the line's first seat.
+// TO ADD A LINE: add it here, then give its seats `line: '<id>'` in MODELS.
+const LINES = [
+  { id: 'kona',   name: 'Kona',          fallback: { 'I-7450': 'K-7451' } },
+  { id: 'island', name: 'Island Breeze', fallback: { 'K-716': 'I-712', 'K-782': 'I-712', 'K-762': 'I-712', 'K-7462': 'I-712', 'K-7482': 'I-712' } },
+];
+const lineById = id => LINES.find(l => l.id === id) || LINES[0];
+const lineOfModel = m => m && m.line ? lineById(m.line) : null;
+const modelNum = id => id.replace(/^[A-Za-z]+-/, '');
+// The seat in line `lineId` that matches seat `id` (tables and seats already in that line come back unchanged).
+function counterpart(id, lineId) {
+  const m = MODELS.find(x => x.id === id);
+  if (!m || m.type !== 'seat' || m.line === lineId) return id;
+  const inLine = MODELS.filter(x => x.type === 'seat' && x.line === lineId);
+  const same = inLine.find(x => modelNum(x.id) === modelNum(id));
+  if (same) return same.id;
+  const fb = (lineById(lineId).fallback || {})[id];
+  return fb && inLine.some(x => x.id === fb) ? fb : (inLine[0] || m).id;
+}
+// Name in the menus: the line is already chosen, so "K-750 Kona Dining Chair" shows as "K-750 Dining Chair".
+const listName = m => { const L = lineOfModel(m); return L ? m.name.replace(' ' + L.name + ' ', ' ') : m.name; };
 
 // Turn every table's `tops` list into { id, name, file } entries (see `tops` above).
 // A top's file starts with the table's size: the model id without its letter prefix ('I-42' -> '42', 'C-36' -> '36').
@@ -1576,10 +1631,16 @@ function applyViewOffset() {
 function buildUI() {
   // Product picker: always there, so customers can switch to any other product. Add &lock=1 to the link to hide it
   // (for a page that should only ever show the one product).
+  // The product line switch narrows the menu to that line's seating; tables are listed with every line.
   const msel = document.getElementById('modelSel');
-  const group = (label, list) => { const g = document.createElement('optgroup'); g.label = label; g.append(...list.map(m => option(m.id, m.name))); return g; };
-  msel.append(group('Seating', MODELS.filter(m => m.type === 'seat')), group('Tables', MODELS.filter(m => m.type === 'table')));
   msel.addEventListener('change', () => setModel(msel.value));
+  const seg = document.getElementById('lineSeg');
+  LINES.forEach(L => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.line = L.id; b.textContent = L.name;
+    b.addEventListener('click', () => { if (L.id === pickLine) return; pickLine = L.id; setModel(counterpart(productModel().id, L.id)); });
+    seg.appendChild(b);
+  });
   document.getElementById('modelPick').hidden = /^(1|true|yes)$/i.test(new URLSearchParams(location.search).get('lock') || '');
 
   // Add-on switch
@@ -1700,6 +1761,21 @@ function option(value, text, selected) {
 }
 
 // Title, tab name and the Fabric / Top pane for the product on show.
+// Product line shown in the product menu: the product's own line, or the last one picked (while a table is shown).
+let pickLine = LINES[0].id;
+function fillProductMenu() {
+  const m = productModel(), msel = document.getElementById('modelSel');
+  const group = (label, list) => { const g = document.createElement('optgroup'); g.label = label; g.append(...list.map(x => option(x.id, listName(x)))); return g; };
+  msel.replaceChildren(group(`${lineById(pickLine).name} seating`, MODELS.filter(x => x.type === 'seat' && x.line === pickLine)),
+    group('Tables', MODELS.filter(x => x.type === 'table')));
+  msel.value = m.id;
+  document.querySelectorAll('#lineSeg button').forEach(b => {
+    const on = b.dataset.line === pickLine;
+    b.classList.toggle('selected', on);
+    b.setAttribute('aria-pressed', on);
+  });
+}
+
 function applyModelUI() {
   const m = productModel();
   const rest = m.name.startsWith(m.id) ? m.name.slice(m.id.length).trim() : m.name;
@@ -1707,9 +1783,11 @@ function applyModelUI() {
   const title = document.getElementById('title');
   title.textContent = words.length ? words.join(' ') + ' ' : '';
   const em = document.createElement('em'); em.textContent = last; title.append(em);
+  title.classList.toggle('long', title.textContent.length > 26);   // long names (e.g. Island Breeze) a size smaller
   document.getElementById('eyebrow').textContent = `${m.id} · Configurator`;
   document.title = `${m.name} · Configurator`;
-  document.getElementById('modelSel').value = m.id;
+  if (m.line) pickLine = m.line;
+  fillProductMenu();
   const extra = m.addOn && modelById(m.addOn);
   document.getElementById('addonRow').hidden = !extra;
   if (extra) {
