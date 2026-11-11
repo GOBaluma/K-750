@@ -14,7 +14,7 @@
     --faint: rgba(238, 244, 247, .38);
     --line: rgba(255, 255, 255, .09);
     --line-strong: rgba(255, 255, 255, .18);
-    --glass: rgba(6, 22, 29, .72);
+    --glass: rgba(8, 26, 58, .78);
     --glass-2: rgba(255, 255, 255, .045);
     --accent: #3fb3da;
     --accent-2: #21809f;
@@ -54,7 +54,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   #status { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 998;
-    background: rgba(6, 20, 27, .8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    background: rgba(8, 24, 54, .8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--line); color: var(--ink); padding: 9px 18px; border-radius: 999px; font-size: 13px; font-weight: 600; }
   #status::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 9px; border-radius: 50%;
     background: var(--accent); box-shadow: 0 0 10px var(--accent); vertical-align: 1px; animation: blink 1s ease-in-out infinite; }
@@ -63,13 +63,13 @@
   @keyframes blink { 50% { opacity: .25; } }
 
   #toast { position: absolute; left: 50%; top: 22px; z-index: 2500; transform: translate(-50%, -16px); opacity: 0; pointer-events: none;
-    background: rgba(6, 20, 27, .88); border: 1px solid var(--line-strong); padding: 10px 18px; border-radius: 999px;
+    background: rgba(8, 24, 54, .88); border: 1px solid var(--line-strong); padding: 10px 18px; border-radius: 999px;
     font-size: 13px; font-weight: 600; transition: .35s cubic-bezier(.2, .9, .3, 1.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
   #hint { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 997; pointer-events: none;
     font-size: 12px; letter-spacing: .06em; color: var(--muted); padding: 8px 16px; border-radius: 999px;
-    background: rgba(5, 18, 24, .45); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    background: rgba(8, 24, 54, .5); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     transition: opacity .8s; white-space: nowrap; }
   #hint.gone { opacity: 0; }
 
@@ -116,12 +116,8 @@
   @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
 
   /* Product line switch */
-  .line-pick { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
-  .line-pick .section-label { flex: none; margin: 0; letter-spacing: .14em; }
-  .seg { flex: 1; display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(0, 0, 0, .28); border: 1px solid var(--line); }
-  .seg button { flex: 1; padding: 6px 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); border-radius: 9px; transition: color .25s, background .25s; white-space: nowrap; }
-  .seg button:hover { color: var(--ink); }
-  .seg button.selected { color: #0a2733; background: var(--grad); }
+  .field.line-pick { margin: 0 0 12px; }
+  .field.line-pick select { width: 64%; max-width: none; }
   .section-label { font-size: 10.5px; font-weight: 800; color: var(--faint); text-transform: uppercase; letter-spacing: .2em; margin: 6px 0 10px; }
   .hint { font-size: 12.5px; color: var(--muted); margin: 12px 0 0; line-height: 1.5; }
   .hint b { color: var(--ink); font-weight: 700; }
@@ -157,7 +153,7 @@
   .plan-head { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 0 8px; }
   #planDims { font-size: 11.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
   .plan-wrap { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line-strong); aspect-ratio: 1 / 1; max-width: 100%; margin: 0 auto;
-    background: radial-gradient(120% 100% at 50% 40%, #163846, #0a1a21); }
+    background: radial-gradient(120% 100% at 50% 40%, #163a66, #0a1a38); }
   #plan { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
   #plan:focus { outline: none; }
   #plan:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -175,9 +171,9 @@
   #plan .handle line { stroke: #bfe6f3; stroke-width: 1.5; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; pointer-events: none; }
   #plan .handle circle { fill: #bfe6f3; stroke: #0a2733; stroke-width: 2; vector-effect: non-scaling-stroke; cursor: grab; }
   #plan .handle circle.hit { fill: transparent; stroke: none; }
-  .plan-fit { position: absolute; right: 8px; top: 8px; background: rgba(6, 20, 27, .75); }
+  .plan-fit { position: absolute; right: 8px; top: 8px; background: rgba(8, 24, 54, .75); }
   .plan-sel { position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px); font-size: 11px; font-weight: 700; padding: 5px 10px;
-    border-radius: 999px; background: rgba(6, 20, 27, .8); border: 1px solid var(--line); pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    border-radius: 999px; background: rgba(8, 24, 54, .8); border: 1px solid var(--line); pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .plan-tools { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
   .plan-tools select { flex: 1; min-width: 0; max-width: none; }
   .plan-tools .dk { width: 36px; height: 36px; flex: none; }
@@ -211,7 +207,7 @@
   select { font: inherit; font-size: 13px; font-weight: 500; color: var(--ink); padding: 8px 32px 8px 12px; border: 1px solid var(--line-strong); border-radius: 10px;
     min-width: 210px; max-width: 62%; appearance: none; -webkit-appearance: none; cursor: pointer;
     background: rgba(0, 0, 0, .3) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23f2a65a' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center; }
-  select option { background: #0d2029; color: #eef4f7; }
+  select option { background: #0c2350; color: #eef4f7; }
   #seatList .field { margin-bottom: 6px; font-weight: 500; color: var(--muted); }
 
   /* Finishes */
@@ -221,7 +217,7 @@
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), 0 6px 14px rgba(0, 0, 0, .35); transition: transform .25s, box-shadow .25s; }
   .color:hover .dot { transform: scale(1.08); }
   .color .name { font-size: 10.5px; text-align: center; color: var(--muted); line-height: 1.25; }
-  .color.selected .dot { transform: scale(1.06); box-shadow: 0 0 0 2px #081820, 0 0 0 4px var(--accent), 0 0 22px rgba(63, 179, 218, .55); }
+  .color.selected .dot { transform: scale(1.06); box-shadow: 0 0 0 2px #081a3a, 0 0 0 4px var(--accent), 0 0 22px rgba(63, 179, 218, .55); }
   .color.selected .name { color: var(--ink); font-weight: 700; }
 
   .fabric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
@@ -444,7 +440,7 @@
   </summary>
   <div class="panel-body">
     <div id="summary" aria-live="polite"></div>
-    <div class="line-pick"><div class="section-label">Product line</div><div class="seg" id="lineSeg" role="group" aria-label="Product line"></div></div>
+    <label class="field line-pick">Product line <select id="lineSel" aria-label="Product line"></select></label>
     <div class="tabs" role="tablist" aria-label="Customize">
       <span class="tab-ink" aria-hidden="true"></span>
       <button class="tab selected" role="tab" id="tab-layout" aria-controls="pane-layout" aria-selected="true"><i>01</i>Layout</button>
@@ -1997,13 +1993,9 @@ function applyViewOffset() {
 /* ---------- UI ---------- */
 function buildUI() {
   // Product line switch
-  const seg = document.getElementById('lineSeg');
-  LINES.forEach(L => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.dataset.line = L.id; b.textContent = L.name;
-    b.addEventListener('click', () => setLine(L.id));
-    seg.appendChild(b);
-  });
+  const lineSel = document.getElementById('lineSel');
+  lineSel.append(...LINES.map(L => option(L.id, L.name, L.id === state.line)));
+  lineSel.addEventListener('change', () => setLine(lineSel.value));
 
   // Pattern cards
   const layoutsEl = document.getElementById('layouts');
@@ -2130,11 +2122,20 @@ function setModels(list, id) {
   if (!rearrange()) commit();
 }
 
-// Switch the product line: every seat becomes its match in the new line. A pattern re-spaces itself for the new sizes.
+// Switch the product line. The layout carries over: the same pattern, or the same spots for a custom layout, with every
+// seat changed to its match in the new line. Each seat also remembers the model it had in every line, so switching back
+// brings back exactly the chairs the customer picked there. Tables, frame and fabric stay as they are.
+const seatMemory = new Map();   // piece uid -> { line id: model id }
 function setLine(id) {
   if (!LINES.some(l => l.id === id) || id === state.line) return;
+  seatPieces().forEach(p => {
+    const mem = seatMemory.get(p.uid) || {};
+    const m = modelById(p.id);
+    if (m.line) mem[m.line] = p.id;
+    seatMemory.set(p.uid, mem);
+    p.id = mem[id] && modelById(mem[id]) ? mem[id] : counterpart(p.id, id);
+  });
   state.line = id;
-  seatPieces().forEach(p => { p.id = counterpart(p.id, id); });
   if (!rearrange()) commit();
 }
 
@@ -2176,11 +2177,7 @@ function refreshControls() {
     : 'Your own layout: drag pieces to move them, and drag the round handle to turn one. Tap a pattern above to start over.';
 
   // Product line switch and the "Add a piece" menu (its seats follow the line)
-  document.querySelectorAll('#lineSeg button').forEach(b => {
-    const on = b.dataset.line === state.line;
-    b.classList.toggle('selected', on);
-    b.setAttribute('aria-pressed', on);
-  });
+  document.getElementById('lineSel').value = state.line;
   fillAddMenu();
 
   // Pieces tab
