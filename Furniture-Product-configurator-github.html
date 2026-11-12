@@ -2134,7 +2134,7 @@ function topThumb(t) {
 function secondFinish() {
   const m = productModel(), t = topOf(m, product().top);
   if (t) { const img = topThumbUrl.get(t.file) || ''; return { label: 'Top', name: t.name, img, css: img ? `url("${img}") center / contain no-repeat, #1a3540` : '#888' }; }
-  if (m.inset) { const w = woodById(state.wood); return { label: 'Top', name: woodName(state.wood), img: w ? w.thumb : '', css: woodCSS(w) }; }
+  if (m.inset) { const w = woodById(state.wood); return { label: 'Top', name: woodName(state.wood), img: w ? w.url : '', css: woodCSS(w) }; }
   if (m.type === 'table') { const c = COLORS[state.frame]; return { label: 'Top', name: `Aluminum, ${c.label}`, img: c.thumbUrl || '', css: frameSwatchCSS(c) }; }
   const f = fabricById(state.fabric);
   if (!f) return { label: 'Fabric', name: '—', img: '', css: '#888' };

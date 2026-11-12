@@ -3242,7 +3242,7 @@ async function printPDF() {
           <p class="ps-h">Finishes</p>
           <div class="ps-fin">${frameSw}<div><small>Frame</small><b>${esc(c.label)}</b></div></div>
           <div class="ps-fin">${fabricSw}<div><small>Fabric</small><b>${esc(f ? f.label : '—')}</b></div></div>
-          ${insetOn() ? `<div class="ps-fin"><span class="sw"><img src="${esc(woodById(state.wood).thumb)}" alt=""></span><div><small>Wood inset top</small><b>${esc(woodName(state.wood))}</b></div></div>` : ''}
+          ${insetOn() ? `<div class="ps-fin"><span class="sw"><img src="${esc(woodById(state.wood).url)}" alt=""></span><div><small>Wood inset top</small><b>${esc(woodName(state.wood))}</b></div></div>` : ''}
           ${person || cu.qNotes ? `<p class="ps-h" style="margin-top:14px">Prepared for</p><div class="ps-kv">${person}</div>${cu.qNotes ? `<div class="ps-notes">${esc(cu.qNotes)}</div>` : ''}` : ''}
         </div>
       </div>
