@@ -172,6 +172,7 @@
   #plan .handle circle { fill: #bfe6f3; stroke: #0a2733; stroke-width: 2; vector-effect: non-scaling-stroke; cursor: grab; }
   #plan .handle circle.hit { fill: transparent; stroke: none; }
   .plan-fit { position: absolute; right: 8px; top: 8px; background: rgba(8, 24, 54, .75); }
+  .plan-sel select { pointer-events: auto; margin-left: 8px; width: auto; max-width: 60%; padding: 2px 22px 2px 8px; font-size: 11px; }
   .plan-sel { position: absolute; left: 8px; bottom: 8px; max-width: calc(100% - 16px); font-size: 11px; font-weight: 700; padding: 5px 10px;
     border-radius: 999px; background: rgba(8, 24, 54, .8); border: 1px solid var(--line); pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .plan-tools { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
@@ -211,6 +212,17 @@
   #seatList .field { margin-bottom: 6px; font-weight: 500; color: var(--muted); }
 
   /* Finishes */
+  .wood-tabs { display: flex; gap: 2px; padding: 3px; margin: 0 0 12px; border-radius: 12px; background: rgba(0, 0, 0, .28); border: 1px solid var(--line); }
+  .wood-tabs button { flex: 1; padding: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); border-radius: 9px; transition: color .25s, background .25s; }
+  .wood-tabs button:hover { color: var(--ink); }
+  .wood-tabs button.selected { color: #0a2733; background: var(--grad); }
+  .wood { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .wood[hidden], .tab[hidden] { display: none; }
+  .wood .dot { width: 48px; height: 48px; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); transition: transform .2s, box-shadow .2s; }
+  .wood:hover .dot { transform: scale(1.08); }
+  .wood .name { font-size: 10.5px; text-align: center; color: var(--muted); line-height: 1.25; }
+  .wood.selected .dot { transform: scale(1.06); box-shadow: 0 0 0 2px #081a3a, 0 0 0 4px var(--accent), 0 0 22px rgba(63, 179, 218, .55); }
+  .wood.selected .name { color: var(--ink); font-weight: 700; }
   .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px 6px; }
   .color { display: flex; flex-direction: column; align-items: center; gap: 7px; }
   .color .dot { width: 48px; height: 48px; border-radius: 50%; background-size: cover; background-position: center; background-repeat: no-repeat;
@@ -499,6 +511,7 @@
       <div role="tabpanel" id="pane-pieces" aria-labelledby="tab-pieces" hidden>
         <label class="field">All seats <select id="seatAll"></select></label>
         <label class="field" id="tableAllRow">All tables <select id="tableAll"></select></label>
+        <label class="field" id="sizeAllRow" hidden>All table sizes <select id="sizeAll"></select></label>
         <label class="field" id="topAllRow" hidden>All table tops <select id="topAll"></select></label>
         <div class="section-label" style="margin-top:18px">Each piece</div>
         <div id="pieceList"></div>
@@ -507,6 +520,12 @@
       <div role="tabpanel" id="pane-frame" aria-labelledby="tab-frame" hidden>
         <p class="hint" style="margin:0 0 14px">One finish for the table and every frame in the group.</p>
         <div class="swatches" id="colors"></div>
+        <div id="woodWrap" hidden>
+          <div class="section-label" style="margin-top:22px">Wood inset table top</div>
+          <p class="hint" style="margin:0 0 12px">The PolyLumber color for the MT wood inset tables.</p>
+          <div class="wood-tabs" role="group" aria-label="PolyLumber color range"></div>
+          <div class="swatches wood-grid"></div>
+        </div>
       </div>
       <div role="tabpanel" id="pane-fabric" aria-labelledby="tab-fabric" hidden>
         <p class="hint" id="fabricNote" style="margin:0 0 8px">One fabric for every seat in the group.</p>
@@ -642,7 +661,7 @@ const BASE = /\/configurator\/[^/]*$/i.test(location.pathname) || /github\.io$/i
   ? new URL('./', location.href).href : FILES_URL;
 // Model files are downloaded with this tag on the end. Change it (any new text, e.g. today's date) whenever you upload new
 // or replaced GLBs, so every browser fetches the new files at once instead of reusing an old copy for up to 10 minutes.
-const ASSET_VERSION = '2026-11-04c';
+const ASSET_VERSION = '2026-11-12a';
 
 // Where "Email for a quote" sends the request. Change it here if the address changes.
 const QUOTE_EMAIL = 'info@alumatech1.com';
@@ -759,6 +778,27 @@ const MODELS = [
     tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
   { id: 'I-18',    name: 'I-18 Side Table',          type: 'table', file: 'I-18.glb',           normalizeFrameUV: false,
     tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+  // Balcony height (about 36" high): they pair with the *52 balcony chairs. Their tops use the same top files as the
+  // dining table of that size (topSize), so the 18" and 30x60 patterns work on them too.
+  { id: 'I-29-52',    name: 'I-29-52 Round Balcony Table',  type: 'table', file: 'I-29-52.glb',    normalizeFrameUV: false },
+  { id: 'I-30x60-52', name: 'I-30x60-52 Balcony Table',     type: 'table', file: 'I-30x60-52.glb', normalizeFrameUV: false, topSize: '30x60',
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'SUNFIRE') },
+  { id: 'C-18-52',    name: 'C-18-52 Balcony Side Table',   type: 'table', file: 'C-18-52.glb',    normalizeFrameUV: false, topSize: '18',
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+  // Turned so its long side runs front to back, parallel to the sides of the chairs it sits between.
+  { id: 'I-18x34-52', name: 'I-18x34-52 Balcony Side Table', type: 'table', file: 'I-18x34-52.glb', normalizeFrameUV: false, yawDeg: 90 },
+  // MT wood inset tables: an aluminum frame with a PolyLumber inset (inset: true = the TOP_INSET part takes the wood finish).
+  // The MT-30SQ is 30-3/4" square so the inset takes whole PolyLumber strips.
+  { id: 'MT-30SQ',      name: 'MT-30SQ Wood Inset Dining Table',      type: 'table', file: 'MT-30SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-36SQ',      name: 'MT-36SQ Wood Inset Dining Table',      type: 'table', file: 'MT-36SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-42SQ',      name: 'MT-42SQ Wood Inset Dining Table',      type: 'table', file: 'MT-42SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-48SQ',      name: 'MT-48SQ Wood Inset Dining Table',      type: 'table', file: 'MT-48SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-24x36SQ',   name: 'MT-24x36SQ Wood Inset Dining Table',   type: 'table', file: 'MT-24x36SQ.glb',   normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-36x54SQ',   name: 'MT-36x54SQ Wood Inset Dining Table',   type: 'table', file: 'MT-36x54SQ.glb',   normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-42x72SQ',   name: 'MT-42x72SQ Wood Inset Dining Table',   type: 'table', file: 'MT-42x72SQ.glb',   normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-42x72SQ-A', name: 'MT-42x72SQ-A Wood Inset Dining Table (Alpha)', type: 'table', file: 'MT-42x72SQ-A.glb', normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-18SQ',      name: 'MT-18SQ Wood Inset End Table',         type: 'table', file: 'MT-18SQ.glb',      normalizeFrameUV: false, inset: true },
+  { id: 'MT-24SQ',      name: 'MT-24SQ Wood Inset End Table',         type: 'table', file: 'MT-24SQ.glb',      normalizeFrameUV: false, inset: true },
   // I-47: its tops are ready; remove the // once I-47.glb (the base, with its TABLETOP part) and 47_PLAIN.glb are uploaded.
   // { id: 'I-47',    name: 'I-47 Round Dining Table',  type: 'table', file: 'I-47.glb',           normalizeFrameUV: false, dining: true,
   //   tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
@@ -798,7 +838,7 @@ MODELS.forEach(m => {
     const o = typeof t === 'string' ? { name: t } : { ...t };
     o.id = topSlug(o.id || o.name);
     o.name = o.name || o.id;
-    o.file = o.file || `${topSize(m.id)}_${o.id}.glb`;
+    o.file = o.file || `${m.topSize || topSize(m.id)}_${o.id}.glb`;
     return o;
   });
 });
@@ -806,6 +846,119 @@ MODELS.forEach(m => {
 const topOf = (m, topId) => (m && m.tops) ? (m.tops.find(t => t.id === topId) || m.tops[0]) : null;
 // Templates are kept per model and top: 'I-47|WAVE'. Models without tops use their plain id.
 const tplKey = (id, topId) => { const t = topOf(modelById(id), topId); return t ? `${id}|${t.id}` : id; };
+
+/* ---------- Table menus: families and height groups ---------- */
+// The table menus list one entry per FAMILY, with a Size menu for its sizes, under a heading for each height group.
+// TO ADD A TABLE: add it to MODELS, then add [its id, the size customers see] to a family here (or start a new family).
+// A table that is in no family is listed on its own: under Dining tables if it has dining: true, otherwise Side & end.
+const TABLE_GROUPS = [
+  { id: 'dining',  name: 'Dining tables' },
+  { id: 'balcony', name: 'Balcony tables' },
+  { id: 'side',    name: 'Side & end tables' },
+];
+const TABLE_FAMILIES = [
+  { id: 'I-DINING',     group: 'dining',  name: 'I Series Dining Table',
+    sizes: [['I-42', '42" round'], ['I-47', '47" round'], ['I-42x76', '42" × 76" oval'], ['I-30x60', '30" × 60"']] },
+  { id: 'C-DINING',     group: 'dining',  name: 'C Series Round Dining Table', sizes: [['C-36', '36" round'], ['C-54', '54" round']] },
+  { id: 'MT-DINING',    group: 'dining',  name: 'MT Wood Inset Dining Table',
+    sizes: [['MT-30SQ', '30¾" square'], ['MT-36SQ', '36" square'], ['MT-42SQ', '42" square'], ['MT-48SQ', '48" square'],
+            ['MT-24x36SQ', '24" × 36"'], ['MT-36x54SQ', '36" × 54"'], ['MT-42x72SQ', '42" × 72"'], ['MT-42x72SQ-A', '42" × 72" Alpha']] },
+  { id: 'BALCONY',      group: 'balcony', name: 'Balcony Table',      sizes: [['I-29-52', '29" round'], ['I-30x60-52', '30" × 60"']] },
+  { id: 'BALCONY-SIDE', group: 'balcony', name: 'Balcony Side Table', sizes: [['C-18-52', '18" round'], ['I-18x34-52', '18" × 34"']] },
+  { id: 'I-SIDE',       group: 'side',    name: 'I Series Side & End Table', sizes: [['I-18', '18" side table'], ['I-23', '23" end table']] },
+  { id: 'MT-END',       group: 'side',    name: 'MT Wood Inset End Table',   sizes: [['MT-18SQ', '18" square'], ['MT-24SQ', '24" square']] },
+];
+const isTableId = id => MODELS.some(m => m.id === id && m.type === 'table');
+// A table's family; a table in no family is a family of its own.
+function familyOf(m) {
+  return TABLE_FAMILIES.find(f => f.sizes.some(([id]) => id === m.id))
+    || { id: 'M:' + m.id, group: m.dining ? 'dining' : 'side', name: m.name, sizes: [[m.id, '']] };
+}
+const familySizes = f => f.sizes.filter(([id]) => isTableId(id));       // only the sizes that are in MODELS
+const sizeLabel = (f, id) => { const s = f.sizes.find(([x]) => x === id); return s && s[1] ? `${s[1]} · ${id}` : id; };
+function tableFamilies() {
+  const out = [];
+  MODELS.filter(m => m.type === 'table').forEach(m => { const f = familyOf(m); if (!out.some(x => x.id === f.id)) out.push(f); });
+  return out;
+}
+// Menu entries: one option per family (its value is the family id), under a heading per height group.
+function familyOptions(currentFamilyId) {
+  const fams = tableFamilies();
+  return [...TABLE_GROUPS, { id: '', name: 'Other tables' }].map(g => {
+    const list = fams.filter(f => g.id ? f.group === g.id : !TABLE_GROUPS.some(x => x.id === f.group));
+    if (!list.length) return null;
+    const og = document.createElement('optgroup');
+    og.label = g.name;
+    og.append(...list.map(f => option(f.id, f.name, f.id === currentFamilyId)));
+    return og;
+  }).filter(Boolean);
+}
+// The model to show when a family is picked: `fromId` if it is in that family, otherwise the family's first size.
+function familyPick(famId, fromId) {
+  const f = tableFamilies().find(x => x.id === famId);
+  if (!f) return null;
+  const sizes = familySizes(f);
+  return (sizes.find(([id]) => id === fromId) || sizes[0])[0];
+}
+const sizeOptions = (f, currentId) => familySizes(f).map(([id]) => option(id, sizeLabel(f, id), id === currentId));
+
+/* ---------- Wood inset tops (PolyLumber) ---------- */
+// The PolyLumber color of the MT tables' wood inset. A mesh whose name (or a parent's) contains INSET takes it.
+// The inset's UVs are in metres (1 UV unit = 1 m) with the grain along the table's length, and each color's image is a
+// seamless tile covering WOOD_TILE_M of the top. TO ADD A COLOR: upload <id>.jpg (and a 128 px copy in thumbs/), then add it here.
+// The woodgrain images are placeholders made from the supplier's flyer until high-res files arrive: same file names.
+const WOOD_TILE_M = 0.6096;      // one image covers 24" of the top
+const WOOD_ROUGHNESS = 0.8;
+const WOOD_GROUPS = [
+  { id: 'woodgrain', name: 'Woodgrain' },
+  { id: 'standard',  name: 'Standard' },
+  { id: 'brights',   name: 'Brights' },
+];
+const WOOD_FINISHES = [
+  { id: 'PL_SEASHELL', label: 'Seashell', group: 'woodgrain' },
+  { id: 'PL_BIRCHWOOD', label: 'Birchwood', group: 'woodgrain' },
+  { id: 'PL_DRIFTWOOD_GRAY', label: 'Driftwood Gray', group: 'woodgrain' },
+  { id: 'PL_COASTAL_GRAY', label: 'Coastal Gray', group: 'woodgrain' },
+  { id: 'PL_ANTIQUE_MAHOGANY', label: 'Antique Mahogany', group: 'woodgrain' },
+  { id: 'PL_BRAZILIAN_WALNUT', label: 'Brazilian Walnut', group: 'woodgrain' },
+  { id: 'PL_NATURAL_TEAK', label: 'Natural Teak', group: 'woodgrain' },
+  { id: 'PL_WALNUT', label: 'Walnut', group: 'woodgrain' },
+  { id: 'PL_NATURE', label: 'Nature', group: 'woodgrain' },
+  { id: 'PL_WEATHERED_TEAK', label: 'Weathered Teak', group: 'woodgrain' },
+  { id: 'PL_LICORICE', label: 'Licorice', group: 'woodgrain' },
+  { id: 'PL_BRIGHT_WHITE', label: 'Bright White', group: 'standard' },
+  { id: 'PL_IVORY', label: 'Ivory', group: 'standard' },
+  { id: 'PL_LIGHT_GRAY', label: 'Light Gray', group: 'standard' },
+  { id: 'PL_GRAY', label: 'Gray', group: 'standard' },
+  { id: 'PL_WEATHERED_WOOD', label: 'Weathered Wood', group: 'standard' },
+  { id: 'PL_CHERRYWOOD', label: 'Cherrywood', group: 'standard' },
+  { id: 'PL_CEDAR', label: 'Cedar', group: 'standard' },
+  { id: 'PL_BRIGHT_CEDAR', label: 'Bright Cedar', group: 'standard' },
+  { id: 'PL_CARDINAL_RED', label: 'Cardinal Red', group: 'standard' },
+  { id: 'PL_BLACK', label: 'Black', group: 'standard' },
+  { id: 'PL_MILWAUKEE_BROWN', label: 'Milwaukee Brown', group: 'standard' },
+  { id: 'PL_TUDOR_BROWN', label: 'Tudor Brown', group: 'standard' },
+  { id: 'PL_BLUE', label: 'Blue', group: 'standard' },
+  { id: 'PL_PATRIOT_BLUE', label: 'Patriot Blue', group: 'standard' },
+  { id: 'PL_TURF_GREEN', label: 'Turf Green', group: 'standard' },
+  { id: 'PL_PINK', label: 'Pink', group: 'brights' },
+  { id: 'PL_BRIGHT_RED', label: 'Bright Red', group: 'brights' },
+  { id: 'PL_BRIGHT_ORANGE', label: 'Bright Orange', group: 'brights' },
+  { id: 'PL_LEMON_YELLOW', label: 'Lemon Yellow', group: 'brights' },
+  { id: 'PL_TROPICAL_LIME_GREEN', label: 'Tropical Lime Green', group: 'brights' },
+  { id: 'PL_ARUBA_BLUE', label: 'Aruba Blue', group: 'brights' },
+  { id: 'PL_POWDER_BLUE', label: 'Powder Blue', group: 'brights' },
+  { id: 'PL_PURPLE', label: 'Purple', group: 'brights' },
+];
+WOOD_FINISHES.forEach(w => { w.url = BASE + w.id + '.jpg'; w.thumb = BASE + 'thumbs/' + w.id + '.jpg'; });
+const WOOD_DEFAULT = 'PL_DRIFTWOOD_GRAY';
+const woodById = id => WOOD_FINISHES.find(w => w.id === id);
+const woodCSS = w => w ? `url("${w.thumb}") center / cover, url("${w.url}") center / cover, #888` : '#888';
+const woodName = id => { const w = woodById(id); return w ? `${w.label} PolyLumber` : ''; };
+function isInsetMesh(obj) {
+  for (let o = obj; o; o = o.parent) if (o.name && o.name.toUpperCase().includes('INSET')) return true;
+  return false;
+}
 
 
 /* ---------- Surfaces ---------- */
@@ -1274,6 +1427,7 @@ const state = {
   preset: null,
   frame: 0,                 // index into COLORS
   fabric: FABRICS[0].id,
+  wood: WOOD_DEFAULT,       // PolyLumber color of the wood inset tops (see WOOD_FINISHES)
   line: LINES[0].id         // product line shown in the seat menus (see LINES)
 };
 let nextUid = 1;
@@ -1290,6 +1444,7 @@ const isSeat = p => modelById(p.id).type === 'seat';
 const seatPieces = () => state.pieces.filter(isSeat);
 const tablePieces = () => state.pieces.filter(p => !isSeat(p));
 const pieceByUid = uid => state.pieces.find(p => p.uid === uid);
+const insetOn = () => state.pieces.some(q => (modelById(q.id) || {}).inset);   // an MT wood inset table is in the group
 const layoutName = () => state.preset ? layoutById(state.preset.id).name : 'Custom layout';
 
 // A model's real footprint once its file has loaded; until then a stand-in, so the floor plan can still draw it.
@@ -1370,6 +1525,7 @@ function saveHash() {
       frame: String(state.frame), fabric: state.fabric });
     if (state.preset) p.set('preset', `${state.preset.id}~${state.preset.between ? 1 : 0}~${state.preset.tableId || ''}`);
     p.set('line', state.line);
+    if (insetOn()) p.set('wood', state.wood);
     history.replaceState(null, '', '#' + p.toString());
   } catch (e) { /* sandboxed frames may not allow it */ }
 }
@@ -1386,6 +1542,7 @@ function loadHash() {
     const f = parseInt(p.get('frame'), 10);
     if (f >= 0 && f < COLORS.length) state.frame = f;
     if (FABRICS.some(x => x.id === p.get('fabric'))) state.fabric = p.get('fabric');
+    if (woodById(p.get('wood'))) state.wood = p.get('wood');
     // Product line: from the link, or else from the first seat that has one
     const firstLined = state.pieces.map(q => modelById(q.id)).find(m => m.line);
     if (LINES.some(l => l.id === p.get('line'))) state.line = p.get('line');
@@ -1413,6 +1570,62 @@ const nav = { vx: 0, vy: 0, vz: 0, hold: null };   // velocities for the dock's 
 // ONE material per surface, shared by every piece, so changing the finish changes the whole group at once.
 const frameMat = new THREE.MeshStandardMaterial({ color: COLORS[0].hex || '#111111', roughness: FRAME_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
 const fabricMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: FABRIC_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
+const insetMat = new THREE.MeshStandardMaterial({ color: '#b9ab98', roughness: WOOD_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
+const woodCache = new Map();
+let latestWood = null;
+function applyWood(id) {
+  const w = woodById(id);
+  if (!w) return;
+  latestWood = id;   // ignore results of older, slower requests
+  const apply = t => { if (latestWood !== id) return; insetMat.map = t; insetMat.color.set('#ffffff'); insetMat.needsUpdate = true; };
+  if (woodCache.has(id)) return apply(woodCache.get(id));
+  new THREE.TextureLoader().load(w.url, t => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(1 / WOOD_TILE_M, 1 / WOOD_TILE_M);
+    t.anisotropy = 8;
+    woodCache.set(id, t);
+    apply(t);
+  }, undefined, err => console.error(`Could not load the ${w.label} top`, err));
+}
+function selectWood(id) {
+  if (!woodById(id)) return;
+  state.wood = id;
+  document.querySelectorAll('.wood').forEach(b => b.classList.toggle('selected', b.dataset.wood === id));
+  updateSummary();
+  saveHash();
+  if (framedOnce) pulse();
+  applyWood(id);
+  if (typeof isQuoteOpen === 'function' && isQuoteOpen()) refreshQuote();
+}
+// The PolyLumber swatches, in a tab per color range.
+function buildWoodUI() {
+  const wrap = document.getElementById('woodWrap');
+  if (!wrap) return;
+  const tabs = wrap.querySelector('.wood-tabs'), grid = wrap.querySelector('.wood-grid');
+  const show = g => {
+    tabs.querySelectorAll('button').forEach(b => { const on = b.dataset.g === g; b.classList.toggle('selected', on); b.setAttribute('aria-pressed', on); });
+    grid.querySelectorAll('.wood').forEach(b => { b.hidden = b.dataset.g !== g; });
+  };
+  WOOD_GROUPS.forEach(g => {
+    const b = document.createElement('button');
+    b.textContent = g.name; b.dataset.g = g.id;
+    b.addEventListener('click', () => show(g.id));
+    tabs.append(b);
+  });
+  WOOD_FINISHES.forEach(w => {
+    const btn = document.createElement('button');
+    btn.className = 'wood';
+    btn.dataset.wood = w.id; btn.dataset.g = w.group;
+    btn.innerHTML = '<span class="dot"></span><span class="name"></span>';
+    btn.querySelector('.dot').style.background = woodCSS(w);
+    btn.querySelector('.name').textContent = w.label;
+    btn.setAttribute('aria-label', `Table top color: ${w.label}`);
+    btn.addEventListener('click', () => selectWood(w.id));
+    grid.append(btn);
+  });
+  show((woodById(state.wood) || WOOD_FINISHES[0]).group);
+}
 
 function init() {
   loadHash();
@@ -1452,6 +1665,7 @@ function init() {
   setupPlan();
   selectFrame(state.frame);
   selectFabric(state.fabric);
+  selectWood(state.wood);
   refreshControls();
   if (state.pieces.length) { planFit(); rebuild({ fly: true }); }   // from a share link
   else applyPreset('around');
@@ -1652,7 +1866,9 @@ function prepareTemplate(def, gltfScene) {
   gltfScene.traverse(obj => {
     if (!obj.isMesh) return;
     obj.castShadow = true;
-    if (isFabricMesh(obj)) {
+    if (isInsetMesh(obj)) {
+      obj.material = insetMat;               // UVs already in metres; the texture's repeat sets the size
+    } else if (isFabricMesh(obj)) {
       hasFabric = true;
       obj.material = fabricMat;
       scaleUVs(obj.geometry, def.fabricRepeat || 1);
@@ -2013,6 +2229,7 @@ function applyViewOffset() {
 
 /* ---------- UI ---------- */
 function buildUI() {
+  buildWoodUI();
   // Product line switch
   const lineSel = document.getElementById('lineSel');
   lineSel.append(...LINES.map(L => option(L.id, L.name, L.id === state.line)));
@@ -2036,7 +2253,8 @@ function buildUI() {
 
   // Pieces: change every seat, or every table, at once
   document.getElementById('seatAll').addEventListener('change', e => setModels(seatPieces(), e.target.value));
-  document.getElementById('tableAll').addEventListener('change', e => setModels(tablePieces(), e.target.value));
+  document.getElementById('tableAll').addEventListener('change', e => setModels(tablePieces(), familyPick(e.target.value, (tablePieces()[0] || {}).id)));
+  document.getElementById('sizeAll').addEventListener('change', e => setModels(tablePieces(), e.target.value));
   document.getElementById('topAll').addEventListener('change', e => setTops(tablePieces(), e.target.value));
 
   // Frame finishes
@@ -2210,7 +2428,12 @@ function refreshControls() {
   const tAll = document.getElementById('tableAll');
   const sameTable = tables.length > 0 && tables.every(p => p.id === tables[0].id);
   document.getElementById('tableAllRow').hidden = !tables.length;
-  tAll.replaceChildren(...(sameTable ? [] : [option('', 'Mixed', true)]), ...tableModels().map(m => option(m.id, m.name, sameTable && m.id === tables[0].id)));
+  const fams = tables.map(p => familyOf(modelById(p.id)).id), sameFam = tables.length > 0 && fams.every(x => x === fams[0]);
+  tAll.replaceChildren(...(sameFam ? [] : [option('', 'Mixed', true)]), ...familyOptions(sameFam ? fams[0] : null));
+  // All table sizes: when every table is in the same family and it comes in more than one size
+  const fam0 = sameFam ? familyOf(modelById(tables[0].id)) : null, sizeAll = document.getElementById('sizeAll');
+  document.getElementById('sizeAllRow').hidden = !(fam0 && familySizes(fam0).length > 1 && tables.length > 1);
+  if (fam0) sizeAll.replaceChildren(...(sameTable ? [] : [option('', 'Mixed', true)]), ...sizeOptions(fam0, sameTable ? tables[0].id : null));
   // All table tops: when every table is the same model and it has tops
   const topModel = sameTable ? modelById(tables[0].id) : null, topAll = document.getElementById('topAll');
   document.getElementById('topAllRow').hidden = !(topModel && topModel.tops && tables.length > 1);
@@ -2230,8 +2453,13 @@ function refreshControls() {
     label.textContent = seat ? `Seat ${++si}` : `Table ${++ti}`;
     const sel = document.createElement('select');
     sel.setAttribute('aria-label', `${label.textContent} model`);
-    sel.replaceChildren(...(seat ? seatChoices(p.id) : tableModels()).map(m => option(m.id, listName(m), m.id === p.id)));
-    sel.addEventListener('change', () => setModels([p], sel.value));
+    if (seat) {
+      sel.replaceChildren(...seatChoices(p.id).map(m => option(m.id, listName(m), m.id === p.id)));
+      sel.addEventListener('change', () => setModels([p], sel.value));
+    } else {                                  // tables: pick the family here, and its size on the line below
+      sel.replaceChildren(...familyOptions(familyOf(modelById(p.id)).id));
+      sel.addEventListener('change', () => setModels([p], familyPick(sel.value, p.id)));
+    }
     const del = document.createElement('button');
     del.className = 'dk';
     del.title = 'Remove';
@@ -2240,7 +2468,20 @@ function refreshControls() {
     del.addEventListener('click', e => { e.stopPropagation(); removePiece(p.uid); });
     row.addEventListener('click', e => { if (!e.target.closest('select')) selectPiece(p.uid); });
     row.append(label, sel, del);
-    const m = modelById(p.id);
+    const m = modelById(p.id), fam = seat ? null : familyOf(m);
+    if (fam && familySizes(fam).length > 1) {   // a table that comes in more sizes: pick its size
+      row.classList.add('has-top');
+      const line = document.createElement('div');
+      line.className = 'top-line';
+      const small = document.createElement('small');
+      small.textContent = 'Size';
+      const zs = document.createElement('select');
+      zs.setAttribute('aria-label', `${label.textContent} size`);
+      zs.replaceChildren(...sizeOptions(fam, p.id));
+      zs.addEventListener('change', () => setModels([p], zs.value));
+      line.append(small, zs);
+      row.append(line);
+    }
     if (!seat && m.tops) {                    // a table with interchangeable tops: pick its pattern
       row.classList.add('has-top');
       const line = document.createElement('div');
@@ -2262,6 +2503,7 @@ function refreshControls() {
     empty.textContent = 'No pieces yet. Add some from the Layout tab.';
     list.append(empty);
   }
+  document.getElementById('woodWrap').hidden = !insetOn();
   updateSummary();
   requestAnimationFrame(fitPlanSize);       // the pattern options may have appeared or gone
 }
@@ -2293,7 +2535,8 @@ function updateSummary() {
   document.getElementById('summary').replaceChildren(
     chip(layoutName()), chip(`${seats} seat${seats === 1 ? '' : 's'}`), chip(tableChip),
     chip(c.label, frameSwatchCSS(c)),
-    ...(fabric ? [chip(fabric.label, `url("${fabric.thumbOk || fabric.thumb}") center / cover, #888`)] : []));
+    ...(fabric ? [chip(fabric.label, `url("${fabric.thumbOk || fabric.thumb}") center / cover, #888`)] : []),
+    ...(insetOn() ? [chip(`${woodById(state.wood).label} top`, woodCSS(woodById(state.wood)))] : []));
 }
 
 /* ---------- Floor plan (Layout tab) ---------- */
@@ -2312,7 +2555,10 @@ const fmtFtIn = m => { const inch = Math.round(m / 0.0254); return `${Math.floor
 function fillAddMenu() {
   const add = document.getElementById('addSel');
   const group = (label, models) => { const g = document.createElement('optgroup'); g.label = label; g.append(...models.map(m => option(m.id, listName(m)))); return g; };
-  add.replaceChildren(option('', '+ Add a piece', true), group(`${lineById(state.line).name} seats`, seatModels()), group('Tables', tableModels()));
+  // Tables: one entry per family (it adds the family's first size; pick another size on the plan or in the Pieces tab)
+  const tableGroups = familyOptions(null);
+  tableGroups.forEach(og => og.querySelectorAll('option').forEach(o => { o.value = familyPick(o.value); }));
+  add.replaceChildren(option('', '+ Add a piece', true), group(`${lineById(state.line).name} seats`, seatModels()), ...tableGroups);
 }
 
 function setupPlan() {
@@ -2437,7 +2683,21 @@ function drawPlan() {
   document.getElementById('planDims').textContent = state.pieces.length ? `Group ${fmtFtIn(b.x1 - b.x0)} × ${fmtFtIn(b.z1 - b.z0)}` : '';
   const selEl = document.getElementById('planSel');
   selEl.hidden = !sp;
-  if (sp) selEl.textContent = `${modelById(sp.id).name}${topName(sp) ? ` (${topName(sp)} top)` : ''} · ${Math.round(((THREE.MathUtils.radToDeg(sp.rot) % 360) + 360) % 360)}°`;
+  if (sp) {
+    const m = modelById(sp.id), fam = m.type === 'table' ? familyOf(m) : null;
+    const text = `${m.name}${topName(sp) ? ` (${topName(sp)} top)` : ''} · ${Math.round(((THREE.MathUtils.radToDeg(sp.rot) % 360) + 360) % 360)}°`;
+    if (fam && familySizes(fam).length > 1) {
+      if (selEl.dataset.key !== `${sp.uid}|${sp.id}`) {   // (re)build the size menu only when the piece or its size changes
+        const z = document.createElement('select');
+        z.setAttribute('aria-label', 'Table size');
+        z.replaceChildren(...sizeOptions(fam, sp.id));
+        z.addEventListener('change', () => setModels([sp], z.value));
+        selEl.replaceChildren(document.createElement('span'), z);
+        selEl.dataset.key = `${sp.uid}|${sp.id}`;
+      }
+      selEl.querySelector('span').textContent = text;
+    } else { selEl.textContent = text; delete selEl.dataset.key; }
+  }
   ['rotLeft', 'rotRight', 'dupBtn', 'delBtn'].forEach(id => { document.getElementById(id).disabled = !sp; });
   document.getElementById('planWarn').hidden = !bad.size;
 }
@@ -2801,7 +3061,7 @@ function addToQuoteCart() {
   const items = bomItems().map(it => ({
     model: it.m.id, qty: it.qty, frame: c ? c.label : '',
     fabric: it.m.type === 'seat' && f ? f.label : '',
-    top: it.top ? it.top.name : ''
+    top: it.top ? it.top.name : it.m.inset ? woodName(state.wood) : ''
   }));
   const form = document.createElement('form');
   form.method = 'post'; form.action = quoteCart.url; form.target = '_top';   // the whole page, also inside a product page
@@ -2859,7 +3119,7 @@ function bomItems() {
     if (it) it.qty++;
     else {
       const m = modelById(p.id), t = topOf(m, p.top);
-      counts.set(k, { m, qty: 1, top: t, name: t ? `${m.name} · ${t.name} top` : m.name, code: t ? `${m.id}-${t.id}` : m.id });
+      counts.set(k, { m, qty: 1, top: t, name: t ? `${m.name} · ${t.name} top` : m.inset ? `${m.name} · ${woodName(state.wood)} top` : m.name, code: t ? `${m.id}-${t.id}` : m.id });
     }
   });
   return [...counts.values()];
@@ -2894,7 +3154,8 @@ function refreshQuote() {
   };
   document.getElementById('finishRows').replaceChildren(
     row('Frame', c.label, frameSwatchCSS(c)),
-    row('Fabric', f ? f.label : '—', f ? `url("${f.thumbOk || f.thumb}") center / cover, #888` : '#888'));
+    row('Fabric', f ? f.label : '—', f ? `url("${f.thumbOk || f.thumb}") center / cover, #888` : '#888'),
+    ...(insetOn() ? [row('Wood inset top', woodName(state.wood), woodCSS(woodById(state.wood)))] : []));
 }
 
 function emailQuote() {
@@ -2916,6 +3177,7 @@ function emailQuote() {
     ...bomItems().map(({ name, code, qty }) => `  ${qty} x ${name} (${code})`), '',
     `Frame finish: ${c.label}`,
     `Fabric: ${f ? f.label : '-'}`,
+    ...(insetOn() ? [`Wood inset top: ${woodName(state.wood)}`] : []),
     ...sampleLines(),
     ...(link ? ['', `Configuration link: ${link}`] : []), '',
     'My details:',
@@ -2980,6 +3242,7 @@ async function printPDF() {
           <p class="ps-h">Finishes</p>
           <div class="ps-fin">${frameSw}<div><small>Frame</small><b>${esc(c.label)}</b></div></div>
           <div class="ps-fin">${fabricSw}<div><small>Fabric</small><b>${esc(f ? f.label : '—')}</b></div></div>
+          ${insetOn() ? `<div class="ps-fin"><span class="sw"><img src="${esc(woodById(state.wood).thumb)}" alt=""></span><div><small>Wood inset top</small><b>${esc(woodName(state.wood))}</b></div></div>` : ''}
           ${person || cu.qNotes ? `<p class="ps-h" style="margin-top:14px">Prepared for</p><div class="ps-kv">${person}</div>${cu.qNotes ? `<div class="ps-notes">${esc(cu.qNotes)}</div>` : ''}` : ''}
         </div>
       </div>
