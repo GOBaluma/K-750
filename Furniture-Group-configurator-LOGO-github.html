@@ -415,6 +415,9 @@
   .sample-row small { display: block; font-size: 9.5px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); }
   .sample-row b { font-size: 13.5px; font-weight: 700; }
   .sample-row .check { margin: 0; }
+  .sample-extra { margin: -4px 0 10px; padding: 8px 14px 4px; border-radius: 12px; background: var(--glass-2); border: 1px solid var(--line); }
+  .sample-extra .field { margin: 0 0 6px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .sample-extra select { max-width: 64%; }
 </style>
 </head>
 <body data-stage="night">
@@ -552,10 +555,17 @@
           <span><small>Request a frame color sample</small><b id="sampleFrameText">—</b></span>
           <span class="check"><input type="checkbox" id="sampleFrame"></span>
         </label>
+        <div class="sample-extra" id="sampleFrameExtra" hidden></div>
         <label class="row sample-row" id="sampleFabricRow">
           <span><small>Request a fabric sample</small><b id="sampleFabricText">—</b></span>
           <span class="check"><input type="checkbox" id="sampleFabric"></span>
         </label>
+        <div class="sample-extra" id="sampleFabricExtra" hidden></div>
+        <label class="row sample-row" id="sampleWoodRow">
+          <span><small>Request a PolyLumber sample</small><b id="sampleWoodText">—</b></span>
+          <span class="check"><input type="checkbox" id="sampleWood"></span>
+        </label>
+        <div class="sample-extra" id="sampleWoodExtra" hidden></div>
         <div class="section-label" id="detailsLabel">Your details</div>
         <div class="form-grid" id="quoteForm">
           <label class="inp" id="qNameWrap"><span>Name *</span><input id="qName" autocomplete="name"></label>
@@ -3222,25 +3232,57 @@ function refreshQuoteMode() {
   show('emailBtn', !on); show('detailsLabel', !on); show('quoteForm', !on); show('quoteHint', !on);
   document.getElementById('cartHint').hidden = !on;
 }
-// Sample requests: the frame color and/or fabric currently chosen.
+// Sample requests: frame color, fabric and PolyLumber (wood inset top). Each switch requests the finish currently
+// chosen, and the customer can add up to SAMPLE_EXTRA more of the same kind from the menus under it.
+const SAMPLE_EXTRA = 2;
+function sampleKinds() {
+  const c = COLORS[state.frame], f = fabricById(state.fabric);
+  return [
+    { key: 'frame',  id: 'Frame',  name: 'frame color', on: true, cur: c ? c.label : '', opts: COLORS.map(x => x.label) },
+    { key: 'fabric', id: 'Fabric', name: 'fabric', on: bomItems().some(it => it.m.type === 'seat'), cur: f ? f.label : '', opts: FABRICS.map(x => x.label) },
+    { key: 'wood',   id: 'Wood',   name: 'PolyLumber', on: insetOn(), cur: (woodById(state.wood) || {}).label || '', opts: WOOD_FINISHES.map(w => w.label) }
+  ];
+}
+// The finishes requested for each kind: the current one first, then any extras, without repeats.
+function sampleList(k) {
+  if (!k.on || !document.getElementById('sample' + k.id).checked) return [];
+  const extra = [...document.querySelectorAll(`#sample${k.id}Extra select`)].map(x => x.value);
+  return [...new Set([k.cur, ...extra].filter(Boolean))];
+}
 function samplesWanted() {
-  const c = COLORS[state.frame], f = fabricById(state.fabric), hasFabric = bomItems().some(it => it.m.type === 'seat');
-  return {
-    frame: document.getElementById('sampleFrame').checked && c ? c.label : '',
-    fabric: hasFabric && document.getElementById('sampleFabric').checked && f ? f.label : ''
-  };
+  const out = {};
+  sampleKinds().forEach(k => { out[k.key] = sampleList(k).join(', '); });
+  return out;
+}
+function buildSampleExtras() {
+  sampleKinds().forEach(k => {
+    const box = document.getElementById(`sample${k.id}Extra`);
+    if (box.dataset.built) return;
+    box.dataset.built = '1';
+    for (let i = 1; i <= SAMPLE_EXTRA; i++) {
+      const lab = document.createElement('label'), sel = document.createElement('select');
+      lab.className = 'field';
+      lab.append(`Extra sample ${i}`);
+      sel.setAttribute('aria-label', `Extra ${k.name} sample ${i}`);
+      sel.add(new Option('None', ''));
+      k.opts.forEach(o => sel.add(new Option(o, o)));
+      lab.append(sel); box.append(lab);
+    }
+    document.getElementById('sample' + k.id).addEventListener('change', refreshSamples);
+  });
 }
 function refreshSamples() {
-  const c = COLORS[state.frame], f = fabricById(state.fabric), hasFabric = bomItems().some(it => it.m.type === 'seat');
-  document.getElementById('sampleFrameText').textContent = c ? c.label : '—';
-  document.getElementById('sampleFabricText').textContent = f ? f.label : '—';
-  document.getElementById('sampleFabricRow').style.display = hasFabric ? '' : 'none';
+  buildSampleExtras();
+  sampleKinds().forEach(k => {
+    const on = document.getElementById('sample' + k.id).checked;
+    document.getElementById(`sample${k.id}Text`).textContent = k.cur || '—';
+    document.getElementById(`sample${k.id}Row`).style.display = k.on ? '' : 'none';
+    document.getElementById(`sample${k.id}Extra`).hidden = !(k.on && on);
+  });
 }
 function sampleLines() {
-  const sm = samplesWanted(), parts = [];
-  if (sm.frame) parts.push(`frame color ${sm.frame}`);
-  if (sm.fabric) parts.push(`fabric ${sm.fabric}`);
-  return parts.length ? [`Samples requested: ${parts.join(', ')}`] : [];
+  const parts = sampleKinds().map(k => { const l = sampleList(k); return l.length ? `${k.name} ${l.join(', ')}` : ''; }).filter(Boolean);
+  return parts.length ? [`Samples requested: ${parts.join('; ')}`] : [];
 }
 function addToQuoteCart() {
   refreshQuoteMode();
