@@ -418,6 +418,27 @@
   .sample-extra { margin: -4px 0 10px; padding: 8px 14px 4px; border-radius: 12px; background: var(--glass-2); border: 1px solid var(--line); }
   .sample-extra .field { margin: 0 0 6px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
   .sample-extra select { max-width: 64%; }
+
+  /* ---------- Start tab: setting buttons and picture cards ---------- */
+  .set-tabs { margin: 0 0 4px; }
+  .pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pick-card { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px 7px; text-align: center; border: 1px solid var(--line);
+    border-radius: 12px; background: var(--glass-2); transition: .25s; min-width: 0; }
+  .pick-card:hover { border-color: var(--line-strong); background: rgba(255, 255, 255, .07); }
+  .pick-card.selected { border-color: var(--accent); background: var(--accent-soft); }
+  .pick-card svg { width: 40px; height: 40px; color: var(--faint); }
+  .pick-card.selected svg { color: var(--accent); }
+  .pick-card b { font-size: 11.5px; font-weight: 800; letter-spacing: .02em; }
+  .pick-card small { font-size: 10.5px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
+  .link-btn { display: block; margin: 10px 0 0; padding: 0; font-size: 12px; font-weight: 700; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .pick-empty { grid-column: 1 / -1; margin: 0; }
+  #addPicker { margin-top: 10px; padding: 10px; border-radius: 14px; border: 1px solid var(--line); background: rgba(0, 0, 0, .18); }
+  #addPicker .section-label { margin-top: 10px; }
+  #addBtn { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line-strong); font-size: 13px; font-weight: 700; text-align: left; }
+  #addBtn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+  #pieceList .piece-row:not(.sel) { display: none; }
+  #pieceList { margin-top: 8px; }
+  @media (max-width: 600px) { .tab { padding: 8px 2px; font-size: 11.5px; } }
 </style>
 </head>
 <body data-stage="night">
@@ -478,18 +499,21 @@
   </summary>
   <div class="panel-body">
     <div id="summary" aria-live="polite"></div>
-    <label class="field line-pick">Product line <select id="lineSel" aria-label="Product line"></select></label>
     <div class="tabs" role="tablist" aria-label="Customize">
       <span class="tab-ink" aria-hidden="true"></span>
-      <button class="tab selected" role="tab" id="tab-layout" aria-controls="pane-layout" aria-selected="true"><i>01</i>Layout</button>
-      <button class="tab" role="tab" id="tab-pieces" aria-controls="pane-pieces" aria-selected="false" tabindex="-1"><i>02</i>Pieces</button>
+      <button class="tab selected" role="tab" id="tab-start" aria-controls="pane-start" aria-selected="true"><i>01</i>Start</button>
+      <button class="tab" role="tab" id="tab-layout" aria-controls="pane-layout" aria-selected="false" tabindex="-1"><i>02</i>Plan</button>
       <button class="tab" role="tab" id="tab-frame" aria-controls="pane-frame" aria-selected="false" tabindex="-1"><i>03</i>Frame</button>
       <button class="tab" role="tab" id="tab-fabric" aria-controls="pane-fabric" aria-selected="false" tabindex="-1"><i>04</i>Fabric</button>
-      <button class="tab" role="tab" id="tab-quote" aria-controls="pane-quote" aria-selected="false" tabindex="-1"><i>05</i>Quote</button>
+      <button class="tab" role="tab" id="tab-extras" aria-controls="pane-extras" aria-selected="false" tabindex="-1"><i>05</i>Extras</button>
+      <button class="tab" role="tab" id="tab-quote" aria-controls="pane-quote" aria-selected="false" tabindex="-1"><i>06</i>Quote</button>
     </div>
     <div class="tab-content">
-      <div role="tabpanel" id="pane-layout" aria-labelledby="tab-layout">
-        <div class="section-label">Start from a pattern</div>
+      <div role="tabpanel" id="pane-start" aria-labelledby="tab-start">
+        <label class="field">Product line <select id="lineSel" aria-label="Product line"></select></label>
+        <div class="section-label">What are you furnishing?</div>
+        <div class="wood-tabs set-tabs" id="setTabs" role="group" aria-label="What are you furnishing"></div>
+        <div class="section-label">Pattern</div>
         <div class="layout-grid" id="layouts"></div>
         <div class="preset-opts" id="presetOpts">
           <div class="row">
@@ -502,6 +526,15 @@
           </div>
           <label class="check" id="betweenRow"><input type="checkbox" id="between"> <span id="betweenText">Put a table between the seats</span></label>
         </div>
+        <div class="section-label">Seat</div>
+        <div class="pick-grid" id="seatCards"></div>
+        <div class="section-label" id="tableCardsLabel">Table</div>
+        <div class="pick-grid" id="tableCards"></div>
+        <label class="field" id="sizeAllRow" hidden style="margin-top:10px">Table size <select id="sizeAll"></select></label>
+        <button class="link-btn" id="showAll" type="button"></button>
+        <p class="hint" id="layoutHint"></p>
+      </div>
+      <div role="tabpanel" id="pane-layout" aria-labelledby="tab-layout" hidden>
         <div class="plan-head">
           <span class="section-label" style="margin:0">Floor plan</span>
           <span id="planDims"></span>
@@ -512,45 +545,44 @@
           <div class="plan-sel" id="planSel" hidden></div>
         </div>
         <div class="plan-tools">
-          <select id="addSel" aria-label="Add a piece"></select>
+          <button id="addBtn" type="button" aria-expanded="false" aria-controls="addPicker">+ Add a piece</button>
           <button class="dk" id="rotLeft" title="Turn left 45°" aria-label="Turn the selected piece left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
           <button class="dk" id="rotRight" title="Turn right 45°" aria-label="Turn the selected piece right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><g transform="matrix(-1 0 0 1 24 0)"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></g></svg></button>
           <button class="dk" id="dupBtn" title="Duplicate" aria-label="Duplicate the selected piece"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button>
           <button class="dk" id="delBtn" title="Remove" aria-label="Remove the selected piece"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
         </div>
+        <div id="addPicker" hidden>
+          <div class="wood-tabs set-tabs" id="addTabs" role="group" aria-label="Kind of piece to add"></div>
+          <div class="section-label">Seats</div>
+          <div class="pick-grid" id="addSeatCards"></div>
+          <div class="section-label">Tables</div>
+          <div class="pick-grid" id="addTableCards"></div>
+        </div>
         <p class="hint warn" id="planWarn" hidden>Pieces outlined in red overlap.</p>
-        <p class="hint" id="layoutHint"></p>
-      </div>
-      <div role="tabpanel" id="pane-pieces" aria-labelledby="tab-pieces" hidden>
-        <label class="field">All seats <select id="seatAll"></select></label>
-        <label class="field" id="tableAllRow">All tables <select id="tableAll"></select></label>
-        <label class="field" id="sizeAllRow" hidden>All table sizes <select id="sizeAll"></select></label>
-        <label class="field" id="topAllRow" hidden>All table tops <select id="topAll"></select></label>
-        <div class="section-label" style="margin-top:18px">Each piece</div>
         <div id="pieceList"></div>
-        <p class="hint">Change any single piece to a different model, or a table to a different top pattern. Tap a row to find that piece on the floor plan.</p>
+        <p class="hint" id="pieceHint">Drag a piece to move it and drag its round handle to turn it. Tap a piece to change its model, size or top.</p>
+        <p class="hint" id="layoutHint"></p>
       </div>
       <div role="tabpanel" id="pane-frame" aria-labelledby="tab-frame" hidden>
         <p class="hint" style="margin:0 0 14px">One finish for the table and every frame in the group.</p>
         <div class="swatches" id="colors"></div>
+      </div>
+      <div role="tabpanel" id="pane-fabric" aria-labelledby="tab-fabric" hidden>
+        <p class="hint" id="fabricNote" style="margin:0 0 8px">One fabric for every seat in the group.</p>
+        <div class="fabric-grid" id="fabrics"></div>
+        <div id="topWrap" hidden>
+          <div class="section-label" style="margin-top:22px">Table top</div>
+          <label class="field" id="topAllRow" hidden>Top pattern <select id="topAll"></select></label>
+        </div>
         <div id="woodWrap" hidden>
-          <div class="section-label" style="margin-top:22px">Wood inset table top</div>
+          <div class="section-label" style="margin-top:18px">Wood inset table top</div>
           <p class="hint" style="margin:0 0 12px">The PolyLumber color for the MT wood inset tables.</p>
           <div class="wood-tabs" role="group" aria-label="PolyLumber color range"></div>
           <div class="swatches wood-grid"></div>
         </div>
       </div>
-      <div role="tabpanel" id="pane-fabric" aria-labelledby="tab-fabric" hidden>
-        <p class="hint" id="fabricNote" style="margin:0 0 8px">One fabric for every seat in the group.</p>
-        <div class="fabric-grid" id="fabrics"></div>
-      </div>
-      <div role="tabpanel" id="pane-quote" aria-labelledby="tab-quote" hidden>
-        <figure class="preview"><img id="quotePreview" alt="Preview of your furniture group"><figcaption id="quoteRef"></figcaption></figure>
-        <div class="section-label">Pieces</div>
-        <ul class="bom" id="bomList"></ul>
-        <div class="section-label">Finishes</div>
-        <div class="finish-rows" id="finishRows"></div>
-        <div class="section-label">Samples</div>
+      <div role="tabpanel" id="pane-extras" aria-labelledby="tab-extras" hidden>
+        <div class="section-label" style="margin-top:0">Samples</div>
         <label class="row sample-row" id="sampleFrameRow">
           <span><small>Request a frame color sample</small><b id="sampleFrameText">—</b></span>
           <span class="check"><input type="checkbox" id="sampleFrame"></span>
@@ -566,6 +598,20 @@
           <span class="check"><input type="checkbox" id="sampleWood"></span>
         </label>
         <div class="sample-extra" id="sampleWoodExtra" hidden></div>
+        <p class="hint" style="margin:0 0 4px">Each sample switch requests the finish you chose. Add up to two more of each kind below it.</p>
+        <div class="section-label">Table options</div>
+        <label class="row sample-row" id="umbrellaRow">
+          <span><small>Umbrella hole in the table top</small><b id="umbrellaText">—</b></span>
+          <span class="check"><input type="checkbox" id="umbrellaChk"></span>
+        </label>
+        <p class="hint" id="umbrellaHint" style="margin-top:4px"></p>
+      </div>
+      <div role="tabpanel" id="pane-quote" aria-labelledby="tab-quote" hidden>
+        <figure class="preview"><img id="quotePreview" alt="Preview of your furniture group"><figcaption id="quoteRef"></figcaption></figure>
+        <div class="section-label">Pieces</div>
+        <ul class="bom" id="bomList"></ul>
+        <div class="section-label">Finishes</div>
+        <div class="finish-rows" id="finishRows"></div>
         <div class="section-label" id="detailsLabel">Your details</div>
         <div class="form-grid" id="quoteForm">
           <label class="inp" id="qNameWrap"><span>Name *</span><input id="qName" autocomplete="name"></label>
@@ -892,11 +938,42 @@ const TABLE_FAMILIES = [
     sizes: [['MT-30SQ', '30¾" square'], ['MT-36SQ', '36" square'], ['MT-42SQ', '42" square'], ['MT-48SQ', '48" square'],
             ['MT-24x36SQ', '24" × 36"'], ['MT-36x54SQ', '36" × 54"'], ['MT-42x72SQ', '42" × 72"'], ['MT-42x72SQ-A', '42" × 72" Alpha']] },
   { id: 'BALCONY',      group: 'balcony', name: 'Balcony Table',      sizes: [['I-29-52', '29" round'], ['I-30x60-52', '30" × 60"']] },
-  { id: 'BALCONY-SIDE', group: 'balcony', name: 'Balcony Side Table', sizes: [['C-18-52', '18" round'], ['I-18x34-52', '18" × 34"']] },
+  { id: 'BALCONY-SIDE', group: 'balcony', side: true, name: 'Balcony Side Table', sizes: [['C-18-52', '18" round'], ['I-18x34-52', '18" × 34"']] },
   { id: 'I-SIDE',       group: 'side',    name: 'I Series Side & End Table', sizes: [['I-18', '18" side table'], ['I-23', '23" end table']] },
   { id: 'MT-END',       group: 'side',    name: 'MT Wood Inset End Table',   sizes: [['MT-18SQ', '18" square'], ['MT-24SQ', '24" square']] },
 ];
 const isTableId = id => MODELS.some(m => m.id === id && m.type === 'table');
+
+/* ---------- Settings: what the customer is furnishing ---------- */
+// The Start tab shows only the seats, tables and patterns that fit the chosen setting ("Show all" lists everything).
+// A model's setting comes from `setting:` in MODELS when it has one, otherwise from its name (Bar, Balcony, Lounge...)
+// and, for tables, from its family's height group. Side tables are the ones in the 'side' group or with side: true.
+const SETTINGS = [
+  { id: 'dining',  name: 'Dining',  seat: 'K-750', layout: 'around' },
+  { id: 'balcony', name: 'Balcony', seat: 'K-752', layout: 'around' },
+  { id: 'bar',     name: 'Bar',     seat: 'K-775', layout: 'row' },
+  { id: 'lounge',  name: 'Lounge',  seat: 'K-712', layout: 'lshape' },
+];
+const SETTING_LAYOUTS = {
+  dining:  ['around', 'cafe'],
+  balcony: ['around', 'cafe', 'row'],
+  bar:     ['around', 'cafe', 'row'],
+  lounge:  ['sunburst', 'row', 'lshape', 'ushape', 'facing', 'fireside'],
+};
+const settingById = id => SETTINGS.find(x => x.id === id) || SETTINGS[0];
+function settingOf(m) {
+  if (!m) return 'dining';
+  if (m.setting) return m.setting;
+  if (m.type === 'table') { const f = familyOf(m); return f.setting || { dining: 'dining', balcony: 'balcony', side: 'lounge' }[f.group] || 'dining'; }
+  const n = `${m.id} ${m.name}`.toUpperCase();
+  if (/\bBAR\b|-75\b/.test(n)) return 'bar';
+  if (/BALCONY|-52\b/.test(n)) return 'balcony';
+  if (/LOUNGE|CHAISE|RECLINER|OTTOMAN|SOFA|LOVESEAT|SAND CHAIR/.test(n)) return 'lounge';
+  return 'dining';
+}
+// Side tables: never offered an umbrella hole, and used between seats in the side-by-side patterns.
+const isSideTable = m => !!m && m.type === 'table' && (familyOf(m).group === 'side' || !!familyOf(m).side);
+const canUmbrella = m => !!m && m.type === 'table' && !isSideTable(m);
 // A table's family; a table in no family is a family of its own.
 function familyOf(m) {
   return TABLE_FAMILIES.find(f => f.sizes.some(([id]) => id === m.id))
@@ -1446,6 +1523,37 @@ const LAYOUT_ICONS = {
   fireside: '<g transform="rotate(-15 13 17)"><rect x="6" y="6" width="14" height="22" rx="3"/><rect x="7" y="32" width="12" height="11" rx="3"/></g><circle cx="27" cy="12" r="4.5"/><g transform="rotate(15 41 17)"><rect x="34" y="6" width="14" height="22" rx="3"/><rect x="35" y="32" width="12" height="11" rx="3"/></g>'
 };
 
+/* ---------- Top-view outlines for the picture cards (54 × 54, seats face down) ---------- */
+function outlineSVG(m, sizeId) {
+  const r = (x, y, w, h, rx = 3) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}"/>`;
+  if (m.type === 'table') {
+    const f = familyOf(m), id = sizeId || m.id, label = ((f.sizes.find(([x]) => x === id) || [])[1] || '').toLowerCase();
+    const nums = (label.match(/[\d.]+/g) || []).map(Number);
+    let inner;
+    if (label.includes('oval')) inner = '<ellipse cx="27" cy="27" rx="24" ry="14"/>';
+    else if (label.includes('round') || label.includes('side table') || label.includes('end table') || (!label.includes('×') && !label.includes('square'))) {
+      const rad = label.includes('side') || label.includes('end') || (nums[0] && nums[0] < 24) ? 13 : 20;
+      inner = `<circle cx="27" cy="27" r="${rad}"/>`;
+    } else {
+      const [a, b] = nums.length > 1 ? nums : [nums[0] || 30, nums[0] || 30], k = 44 / Math.max(a, b), w = Math.max(b, a) * k, h = Math.min(a, b) * k;
+      inner = r(27 - w / 2, 27 - h / 2, w, h, 3);
+    }
+    if (m.inset) inner += label.includes('×') || label.includes('square') ? '' : '';
+    return inner;
+  }
+  const n = m.name.toUpperCase();
+  const swivel = n.includes('SWIVEL') || n.includes('ROCKER') ? '<circle cx="27" cy="29" r="3"/>' : '';
+  if (n.includes('SOFA')) return r(3, 14, 48, 26, 5) + r(3, 14, 48, 7, 3) + '<path d="M19 21v19M35 21v19"/>';
+  if (n.includes('LOVESEAT')) return r(9, 14, 36, 26, 5) + r(9, 14, 36, 7, 3) + '<path d="M27 21v19"/>';
+  if (n.includes('CHAISE')) return r(16, 2, 22, 50, 5) + r(16, 2, 22, 14, 4);
+  if (n.includes('OTTOMAN')) return r(15, 15, 24, 24, 5);
+  if (n.includes('BACKLESS') || n.includes('STOOL')) return '<circle cx="27" cy="27" r="12"/>';
+  if (n.includes('LOUNGE') || n.includes('RECLINER')) return r(9, 9, 36, 36, 6) + r(9, 9, 36, 9, 4) + '<path d="M16 18v27M38 18v27"/>';
+  const back = n.includes('HIGH BACK') ? 9 : 6, arms = n.includes('ARMLESS') || n.includes('SAND') ? '' : '<path d="M17 ' + (13 + back) + 'v22M37 ' + (13 + back) + 'v22"/>';
+  return r(14, 13, 26, 28, 5) + r(14, 13, 26, back, 3) + arms + swivel;
+}
+const outlineIcon = (m, sizeId) => `<svg viewBox="0 0 54 54" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true">${outlineSVG(m, sizeId)}</svg>`;
+
 /* ---------- State ---------- */
 // The group is a list of pieces, each placed freely on the floor: { uid, id (model), x, z (metres), rot (radians) }.
 // rot follows the same rule as the patterns: a piece turned by rot faces (sin rot, cos rot); 0 faces the viewer.
@@ -1456,9 +1564,13 @@ const state = {
   frame: 0,                 // index into COLORS
   fabric: FABRICS[0].id,
   wood: WOOD_DEFAULT,       // PolyLumber color of the wood inset tops (see WOOD_FINISHES)
-  line: LINES[0].id         // product line shown in the seat menus (see LINES)
+  line: LINES[0].id,        // product line shown in the seat menus (see LINES)
+  setting: 'dining',        // what the customer is furnishing (see SETTINGS)
+  umbrella: false           // an umbrella hole in every table that can have one (not side tables)
 };
 let nextUid = 1;
+let showAllPicks = false;    // Start tab: list every seat and table, not only those for the setting
+let addSetting = null;      // Plan tab: the setting shown in the add-a-piece cards
 const newPiece = (id, p) => ({ uid: nextUid++, id, x: p.x, z: p.z, rot: p.rot || 0, top: p.top || null });
 // The chosen top id of a piece (null: default or no tops). Kept only if the piece's model has that top.
 const validTop = (id, topId) => { const m = modelById(id); return m && m.tops && m.tops.some(t => t.id === topId) ? topId : null; };
@@ -1553,6 +1665,8 @@ function saveHash() {
       frame: String(state.frame), fabric: state.fabric });
     if (state.preset) p.set('preset', `${state.preset.id}~${state.preset.between ? 1 : 0}~${state.preset.tableId || ''}`);
     p.set('line', state.line);
+    p.set('set', state.setting);
+    if (state.umbrella) p.set('u', '1');
     if (insetOn()) p.set('wood', state.wood);
     history.replaceState(null, '', '#' + p.toString());
   } catch (e) { /* sandboxed frames may not allow it */ }
@@ -1575,6 +1689,10 @@ function loadHash() {
     const firstLined = state.pieces.map(q => modelById(q.id)).find(m => m.line);
     if (LINES.some(l => l.id === p.get('line'))) state.line = p.get('line');
     else if (firstLined) state.line = firstLined.line;
+    const firstSeat = state.pieces.map(q => modelById(q.id)).find(m => m.type === 'seat');
+    if (SETTINGS.some(x => x.id === p.get('set'))) state.setting = p.get('set');
+    else if (firstSeat) state.setting = settingOf(firstSeat);
+    state.umbrella = p.get('u') === '1';
   } catch (e) { /* ignore a malformed link */ }
 }
 
@@ -2442,16 +2560,28 @@ function buildUI() {
     btn.innerHTML = `<svg viewBox="0 0 54 54" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">${LAYOUT_ICONS[L.id] || ''}</svg><span></span>`;
     btn.querySelector('span').textContent = L.name;
     btn.setAttribute('aria-label', `Pattern: ${L.name}`);
-    btn.addEventListener('click', () => applyPreset(L.id));
+    btn.addEventListener('click', () => startPattern(L.id));
     layoutsEl.appendChild(btn);
   });
+  // What are you furnishing? (Start) and the kind of piece to add (Plan)
+  const setTabs = document.getElementById('setTabs'), addTabs = document.getElementById('addTabs');
+  SETTINGS.forEach(S => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.set = S.id; b.textContent = S.name;
+    b.addEventListener('click', () => setSetting(S.id));
+    setTabs.append(b);
+    const a = b.cloneNode(true);
+    a.addEventListener('click', () => { addSetting = S.id; fillAddMenu(); });
+    addTabs.append(a);
+  });
+  document.getElementById('showAll').addEventListener('click', () => { showAllPicks = !showAllPicks; refreshControls(); });
+  document.getElementById('addBtn').addEventListener('click', () => toggleAddPicker());
+  document.getElementById('umbrellaChk').addEventListener('change', e => { state.umbrella = e.target.checked; saveHash(); refreshExtras(); updateSummary(); });
   document.getElementById('seatMinus').addEventListener('click', () => rearrange({ n: seatPieces().length - 1 }));
   document.getElementById('seatPlus').addEventListener('click', () => rearrange({ n: seatPieces().length + 1 }));
   document.getElementById('between').addEventListener('change', e => rearrange({ between: e.target.checked }));
 
-  // Pieces: change every seat, or every table, at once
-  document.getElementById('seatAll').addEventListener('change', e => setModels(seatPieces(), e.target.value));
-  document.getElementById('tableAll').addEventListener('change', e => setModels(tablePieces(), familyPick(e.target.value, (tablePieces()[0] || {}).id)));
+  // Start: one size for every table of the chosen family
   document.getElementById('sizeAll').addEventListener('change', e => setModels(tablePieces(), e.target.value));
   document.getElementById('topAll').addEventListener('change', e => setTops(tablePieces(), e.target.value));
 
@@ -2525,6 +2655,7 @@ function setupTabs() {
     });
     moveInk(tab);
     if (tab.id === 'tab-quote') refreshQuote();
+    if (tab.id === 'tab-extras') refreshExtras();
   };
   tabs.forEach((tab, i) => {
     tab.addEventListener('click', () => showTab(tab));
@@ -2548,6 +2679,113 @@ function commit(opts) {
   saveHash();
   rebuild(opts);
 }
+/* ---------- Start tab ---------- */
+// The seat for a setting in the current line: its usual model (SETTINGS seat), else the first one of that setting.
+function settingSeat(setId) {
+  const S = settingById(setId), list = seatModels().filter(m => settingOf(m) === setId);
+  const want = modelById(S.seat) ? counterpart(S.seat, state.line) : null;
+  return (list.find(m => m.id === want) || list[0] || seatModels()[0]).id;
+}
+// Families of tables for a setting; `side` true = side tables, false = main tables, undefined = both.
+function settingFamilies(setId, side) {
+  return tableFamilies().filter(f => familySizes(f).some(([id]) => settingOf(modelById(id)) === setId)
+    && (side === undefined || familySizes(f).some(([id]) => isSideTable(modelById(id)) === side)));
+}
+const layoutsFor = setId => (SETTING_LAYOUTS[setId] || LAYOUTS.map(L => L.id)).filter(id => layoutById(id)
+  && (layoutById(id).usesBetween || settingFamilies(setId, false).length));      // a table pattern needs a main table
+// Lay out a pattern for the current setting: its seats, and a table of the right height and kind.
+function startPattern(layoutId) {
+  const L = layoutById(layoutId), set = state.setting, D = L.defaults || {};
+  const side = !!L.usesBetween;
+  const cur = tablePieces()[0], curM = cur ? modelById(cur.id) : null;
+  let tableId;
+  if (curM && settingOf(curM) === set && isSideTable(curM) === side) tableId = cur.id;
+  else if (modelById(D.table) && settingOf(modelById(D.table)) === set && isSideTable(modelById(D.table)) === side) tableId = D.table;
+  else {
+    const fam = settingFamilies(set, side)[0] || settingFamilies(set)[0];
+    tableId = fam ? familyPick(fam.id) : null;
+  }
+  const seats = seatPieces().map(p => p.id).filter(id => settingOf(modelById(id)) === set);
+  const opts = { tableId, between: tableId ? true : false };
+  if (D.seats && set === 'lounge') opts.seatIds = D.seats.filter(id => modelById(id)).map(id => counterpart(id, state.line));
+  else opts.seatIds = seats.length ? seats : [settingSeat(set)];
+  if (!tableId && !L.usesBetween) return;          // (not offered: layoutsFor hides it)
+  applyPreset(layoutId, opts);
+}
+function setSetting(id) {
+  if (!SETTINGS.some(x => x.id === id)) return;
+  state.setting = id;
+  addSetting = id;
+  showAllPicks = false;
+  startPattern(layoutsFor(id).includes(settingById(id).layout) ? settingById(id).layout : layoutsFor(id)[0]);
+}
+// A picture card: outline, model number and short name.
+function pickCard(m, { sizeId, title, sub, selected, onPick }) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'pick-card' + (selected ? ' selected' : '');
+  b.innerHTML = outlineIcon(m, sizeId) + '<b></b><small></small>';
+  b.querySelector('b').textContent = title;
+  b.querySelector('small').textContent = sub;
+  b.setAttribute('aria-pressed', !!selected);
+  b.setAttribute('aria-label', `${title} ${sub}`);
+  b.addEventListener('click', onPick);
+  return b;
+}
+const shortName = m => listName(m).replace(m.id, '').replace(/^\s*[·-]?\s*/, '').trim() || m.name;
+const emptyNote = text => { const e = document.createElement('p'); e.className = 'hint pick-empty'; e.textContent = text; return e; };
+// Pick a table family for the group: every table becomes it, or the pattern gets one if it has none.
+function pickTable(famId) {
+  const tables = tablePieces(), id = familyPick(famId, (tables[0] || {}).id);
+  if (!id) return;
+  if (tables.length) { setModels(tables, id); return; }
+  if (state.preset && layoutById(state.preset.id).usesBetween) { rearrange({ tableId: id, between: true }); return; }
+  addPiece(id);
+}
+function refreshStart() {
+  const seats = seatPieces(), tables = tablePieces(), set = state.setting;
+  document.querySelectorAll('#setTabs button').forEach(b => b.classList.toggle('selected', b.dataset.set === set));
+  const allowed = showAllPicks ? LAYOUTS.map(L => L.id) : layoutsFor(set);
+  document.querySelectorAll('#layouts .layout-card').forEach(b => { b.hidden = !allowed.includes(b.dataset.layout); });
+  // Seats
+  const seatIds = new Set(seats.map(p => p.id)), oneSeat = seatIds.size === 1 ? [...seatIds][0] : null;
+  const seatList = seatModels().filter(m => showAllPicks || settingOf(m) === set);
+  const seatCards = seatList.map(m => pickCard(m, { title: m.id, sub: shortName(m), selected: m.id === oneSeat,
+    onPick: () => seats.length ? setModels(seatPieces(), m.id) : addPiece(m.id) }));
+  if (seatIds.size > 1) seatCards.unshift(emptyNote('This pattern mixes seats. Picking one here changes every seat; change single seats on the Plan tab.'));
+  document.getElementById('seatCards').replaceChildren(...seatCards);
+  // Tables: one card per family, with the size menu below
+  const famIds = new Set(tables.map(p => familyOf(modelById(p.id)).id)), oneFam = famIds.size === 1 ? [...famIds][0] : null;
+  const fams = showAllPicks ? tableFamilies() : settingFamilies(set);
+  const tableCards = fams.map(f => {
+    const sizeId = oneFam === f.id ? tables[0].id : familySizes(f)[0][0], m = modelById(sizeId);
+    const sizes = familySizes(f).length;
+    return pickCard(m, { sizeId, title: f.name.replace(/ Table$/, ''), sub: sizes > 1 ? `${sizes} sizes` : (f.sizes[0][1] || m.id),
+      selected: f.id === oneFam, onPick: () => pickTable(f.id) });
+  });
+  if (!fams.length) tableCards.push(emptyNote(`No ${settingById(set).name.toLowerCase()}-height tables yet. Use "Show all" to add another table.`));
+  document.getElementById('tableCards').replaceChildren(...tableCards);
+  const fam0 = oneFam ? familyOf(modelById(tables[0].id)) : null, sizeAll = document.getElementById('sizeAll');
+  const sameTable = tables.length > 0 && tables.every(p => p.id === tables[0].id);
+  document.getElementById('sizeAllRow').hidden = !(fam0 && familySizes(fam0).length > 1);
+  if (fam0) sizeAll.replaceChildren(...(sameTable ? [] : [option('', 'Mixed', true)]), ...sizeOptions(fam0, sameTable ? tables[0].id : null));
+  document.getElementById('showAll').textContent = showAllPicks ? `Show only ${settingById(set).name.toLowerCase()} pieces` : 'Show all seats, tables and patterns';
+}
+
+/* ---------- Extras tab: samples and table options ---------- */
+function refreshExtras() {
+  refreshSamples();
+  const names = [...new Set(tablePieces().map(p => modelById(p.id)).filter(canUmbrella).map(m => m.id))];
+  const anySide = tablePieces().some(p => isSideTable(modelById(p.id)));
+  document.getElementById('umbrellaRow').style.display = names.length ? '' : 'none';
+  document.getElementById('umbrellaText').textContent = names.length ? names.join(', ') : '—';
+  document.getElementById('umbrellaChk').checked = state.umbrella;
+  document.getElementById('umbrellaHint').textContent = names.length
+    ? (anySide ? 'Side tables in the group are made without one.' : '')
+    : 'Umbrella holes are available on dining, balcony and bar height tables. Add one to the group to choose it.';
+}
+const umbrellaOn = m => state.umbrella && canUmbrella(m);
+
 // The customer has changed the layout by hand, so it is no longer one of the patterns.
 function markCustom() { state.preset = null; }
 
@@ -2584,6 +2822,17 @@ function setTops(list, topId) {
   commit();
 }
 const topName = p => { const t = topOf(modelById(p.id), p.top); return t ? t.name : ''; };
+// Seat menu for one piece: the line's seats under a heading for each setting.
+function seatOptionsBySetting(currentId) {
+  const list = seatChoices(currentId);
+  return SETTINGS.map(S => {
+    const ms = list.filter(m => settingOf(m) === S.id);
+    if (!ms.length) return null;
+    const g = document.createElement('optgroup'); g.label = S.name + ' seats';
+    g.append(...ms.map(m => option(m.id, listName(m), m.id === currentId)));
+    return g;
+  }).filter(Boolean);
+}
 
 function option(value, text, selected) {
   const o = document.createElement('option');
@@ -2617,26 +2866,14 @@ function refreshControls() {
   document.getElementById('lineSel').value = state.line;
   fillAddMenu();
 
-  // Pieces tab
-  const allSel = document.getElementById('seatAll');
-  const sameSeat = seats.length > 0 && seats.every(p => p.id === seats[0].id);
-  allSel.replaceChildren(...(sameSeat ? [] : [option('', seats.length ? 'Mixed' : 'No seats', true)]),
-    ...seatChoices(sameSeat ? seats[0].id : null).map(m => option(m.id, listName(m), sameSeat && m.id === seats[0].id)));
-  allSel.disabled = !seats.length;
-  const tAll = document.getElementById('tableAll');
-  const sameTable = tables.length > 0 && tables.every(p => p.id === tables[0].id);
-  document.getElementById('tableAllRow').hidden = !tables.length;
-  const fams = tables.map(p => familyOf(modelById(p.id)).id), sameFam = tables.length > 0 && fams.every(x => x === fams[0]);
-  tAll.replaceChildren(...(sameFam ? [] : [option('', 'Mixed', true)]), ...familyOptions(sameFam ? fams[0] : null));
-  // All table sizes: when every table is in the same family and it comes in more than one size
-  const fam0 = sameFam ? familyOf(modelById(tables[0].id)) : null, sizeAll = document.getElementById('sizeAll');
-  document.getElementById('sizeAllRow').hidden = !(fam0 && familySizes(fam0).length > 1 && tables.length > 1);
-  if (fam0) sizeAll.replaceChildren(...(sameTable ? [] : [option('', 'Mixed', true)]), ...sizeOptions(fam0, sameTable ? tables[0].id : null));
-  // All table tops: when every table is the same model and it has tops
-  const topModel = sameTable ? modelById(tables[0].id) : null, topAll = document.getElementById('topAll');
-  document.getElementById('topAllRow').hidden = !(topModel && topModel.tops && tables.length > 1);
-  if (topModel && topModel.tops) {
-    const cur = tables.map(p => topOf(topModel, p.top).id), same = cur.every(t => t === cur[0]);
+  refreshStart();
+  // Fabric tab: the top pattern of every table that has pattern tops
+  const topTables = tables.filter(p => modelById(p.id).tops), topModel = topTables.length ? modelById(topTables[0].id) : null;
+  const topAll = document.getElementById('topAll');
+  document.getElementById('topAllRow').hidden = !topModel;
+  document.getElementById('topWrap').hidden = !topModel;
+  if (topModel) {
+    const cur = topTables.map(p => topOf(modelById(p.id), p.top).id), same = cur.every(t => t === cur[0]);
     topAll.replaceChildren(...(same ? [] : [option('', 'Mixed', true)]), ...topModel.tops.map(t => option(t.id, t.name, same && t.id === cur[0])));
   }
 
@@ -2652,7 +2889,7 @@ function refreshControls() {
     const sel = document.createElement('select');
     sel.setAttribute('aria-label', `${label.textContent} model`);
     if (seat) {
-      sel.replaceChildren(...seatChoices(p.id).map(m => option(m.id, listName(m), m.id === p.id)));
+      sel.replaceChildren(...seatOptionsBySetting(p.id));
       sel.addEventListener('change', () => setModels([p], sel.value));
     } else {                                  // tables: pick the family here, and its size on the line below
       sel.replaceChildren(...familyOptions(familyOf(modelById(p.id)).id));
@@ -2698,10 +2935,11 @@ function refreshControls() {
   if (!state.pieces.length) {
     const empty = document.createElement('p');
     empty.className = 'hint';
-    empty.textContent = 'No pieces yet. Add some from the Layout tab.';
+    empty.textContent = 'No pieces yet. Use + Add a piece, or pick a pattern on the Start tab.';
     list.append(empty);
   }
   document.getElementById('woodWrap').hidden = !insetOn();
+  refreshExtras();
   updateSummary();
   requestAnimationFrame(fitPlanSize);       // the pattern options may have appeared or gone
 }
@@ -2734,7 +2972,8 @@ function updateSummary() {
     chip(layoutName()), chip(`${seats} seat${seats === 1 ? '' : 's'}`), chip(tableChip),
     chip(c.label, frameSwatchCSS(c)),
     ...(fabric ? [chip(fabric.label, `url("${fabric.thumbOk || fabric.thumb}") center / cover, #888`)] : []),
-    ...(insetOn() ? [chip(`${woodById(state.wood).label} top`, woodCSS(woodById(state.wood)))] : []));
+    ...(insetOn() ? [chip(`${woodById(state.wood).label} top`, woodCSS(woodById(state.wood)))] : []),
+    ...(tables.some(p => umbrellaOn(modelById(p.id))) ? [chip('Umbrella hole')] : []));
 }
 
 /* ---------- Floor plan (Layout tab) ---------- */
@@ -2749,21 +2988,32 @@ let planEl = null, drag = null;
 const snapTo = (v, step) => Math.round(v / step) * step;
 const fmtFtIn = m => { const inch = Math.round(m / 0.0254); return `${Math.floor(inch / 12)}′ ${inch % 12}″`; };
 
-// "+ Add a piece": the current line's seats, then every table.
+// "+ Add a piece": picture cards for the seats and tables of one setting (the current one to begin with).
+function toggleAddPicker(open) {
+  const pk = document.getElementById('addPicker'), btn = document.getElementById('addBtn');
+  const on = open ?? pk.hidden;
+  pk.hidden = !on;
+  btn.setAttribute('aria-expanded', on);
+  btn.textContent = on ? 'Close' : '+ Add a piece';
+  if (on) { addSetting = addSetting || state.setting; fillAddMenu(); requestAnimationFrame(() => pk.scrollIntoView({ block: 'nearest', behavior: 'smooth' })); }
+}
 function fillAddMenu() {
-  const add = document.getElementById('addSel');
-  const group = (label, models) => { const g = document.createElement('optgroup'); g.label = label; g.append(...models.map(m => option(m.id, listName(m)))); return g; };
-  // Tables: one entry per family (it adds the family's first size; pick another size on the plan or in the Pieces tab)
-  const tableGroups = familyOptions(null);
-  tableGroups.forEach(og => og.querySelectorAll('option').forEach(o => { o.value = familyPick(o.value); }));
-  add.replaceChildren(option('', '+ Add a piece', true), group(`${lineById(state.line).name} seats`, seatModels()), ...tableGroups);
+  if (document.getElementById('addPicker').hidden) return;
+  const set = addSetting || state.setting;
+  document.querySelectorAll('#addTabs button').forEach(b => b.classList.toggle('selected', b.dataset.set === set));
+  const add = id => { toggleAddPicker(false); addPiece(id); };
+  const seats = seatModels().filter(m => settingOf(m) === set);
+  document.getElementById('addSeatCards').replaceChildren(...seats.map(m => pickCard(m, { title: m.id, sub: shortName(m), onPick: () => add(m.id) })),
+    ...(seats.length ? [] : [emptyNote('No seats of this kind in this line.')]));
+  const fams = settingFamilies(set);
+  document.getElementById('addTableCards').replaceChildren(...fams.map(f => {
+    const id = familySizes(f)[0][0];
+    return pickCard(modelById(id), { sizeId: id, title: f.name.replace(/ Table$/, ''), sub: familySizes(f).length > 1 ? 'Pick the size after adding' : (f.sizes[0][1] || id), onPick: () => add(id) });
+  }), ...(fams.length ? [] : [emptyNote('No tables of this kind yet.')]));
 }
 
 function setupPlan() {
   planEl = document.getElementById('plan');
-  const add = document.getElementById('addSel');
-  fillAddMenu();
-  add.addEventListener('change', () => { if (add.value) addPiece(add.value); add.value = ''; });
   document.getElementById('rotLeft').addEventListener('click', () => turnSelected(Math.PI / 4));    // counter-clockwise from above
   document.getElementById('rotRight').addEventListener('click', () => turnSelected(-Math.PI / 4));
   document.getElementById('dupBtn').addEventListener('click', () => { if (selectedUid != null) duplicatePiece(selectedUid); });
@@ -2793,7 +3043,7 @@ function fitPlanSize() {
   const full = wrap.offsetWidth, panel = document.getElementById('panel'), tools = document.querySelector('.plan-tools');
   for (let i = 0; i < 2; i++) {             // a second pass catches any reflow from the first
     const visibleBottom = Math.min(box.getBoundingClientRect().bottom, panel.getBoundingClientRect().bottom - 12);
-    const over = tools.getBoundingClientRect().bottom - visibleBottom + 4;
+    const over = tools.getBoundingClientRect().bottom - visibleBottom + 4 + 52;   // + room for the selected piece's row
     if (over <= 0) break;
     wrap.style.width = Math.max(170, wrap.offsetWidth - over) + 'px';
   }
@@ -2884,18 +3134,9 @@ function drawPlan() {
   if (sp) {
     const m = modelById(sp.id), fam = m.type === 'table' ? familyOf(m) : null;
     const text = `${m.name}${topName(sp) ? ` (${topName(sp)} top)` : ''} · ${Math.round(((THREE.MathUtils.radToDeg(sp.rot) % 360) + 360) % 360)}°`;
-    if (fam && familySizes(fam).length > 1) {
-      if (selEl.dataset.key !== `${sp.uid}|${sp.id}`) {   // (re)build the size menu only when the piece or its size changes
-        const z = document.createElement('select');
-        z.setAttribute('aria-label', 'Table size');
-        z.replaceChildren(...sizeOptions(fam, sp.id));
-        z.addEventListener('change', () => setModels([sp], z.value));
-        selEl.replaceChildren(document.createElement('span'), z);
-        selEl.dataset.key = `${sp.uid}|${sp.id}`;
-      }
-      selEl.querySelector('span').textContent = text;
-    } else { selEl.textContent = text; delete selEl.dataset.key; }
+    selEl.textContent = text;
   }
+  document.getElementById('pieceHint').hidden = !!sp && state.pieces.length > 0;
   ['rotLeft', 'rotRight', 'dupBtn', 'delBtn'].forEach(id => { document.getElementById(id).disabled = !sp; });
   document.getElementById('planWarn').hidden = !bad.size;
 }
@@ -3291,7 +3532,8 @@ function addToQuoteCart() {
   const items = bomItems().map(it => ({
     model: it.m.id, qty: it.qty, frame: c ? c.label : '',
     fabric: it.m.type === 'seat' && f ? f.label : '',
-    top: it.top ? it.top.name : it.m.inset ? woodName(state.wood) : ''
+    top: it.top ? it.top.name : it.m.inset ? woodName(state.wood) : '',
+    umbrella: umbrellaOn(it.m) ? 'Yes' : ''
   }));
   const form = document.createElement('form');
   form.method = 'post'; form.action = quoteCart.url; form.target = '_top';   // the whole page, also inside a product page
@@ -3349,7 +3591,8 @@ function bomItems() {
     if (it) it.qty++;
     else {
       const m = modelById(p.id), t = topOf(m, p.top);
-      counts.set(k, { m, qty: 1, top: t, name: t ? `${m.name} · ${t.name} top` : m.inset ? `${m.name} · ${woodName(state.wood)} top` : m.name, code: t ? `${m.id}-${t.id}` : m.id });
+      const base = t ? `${m.name} · ${t.name} top` : m.inset ? `${m.name} · ${woodName(state.wood)} top` : m.name;
+      counts.set(k, { m, qty: 1, top: t, name: umbrellaOn(m) ? `${base} · umbrella hole` : base, code: t ? `${m.id}-${t.id}` : m.id });
     }
   });
   return [...counts.values()];
@@ -3408,6 +3651,7 @@ function emailQuote() {
     `Frame finish: ${c.label}`,
     `Fabric: ${f ? f.label : '-'}`,
     ...(insetOn() ? [`Wood inset top: ${woodName(state.wood)}`] : []),
+    ...(tablePieces().some(p => umbrellaOn(modelById(p.id))) ? ['Umbrella hole: yes, in each dining, balcony or bar table'] : []),
     ...sampleLines(),
     ...(link ? ['', `Configuration link: ${link}`] : []), '',
     'My details:',

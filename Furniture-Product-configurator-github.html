@@ -488,7 +488,8 @@
       <span class="tab-ink" aria-hidden="true"></span>
       <button class="tab selected" role="tab" id="tab-frame" aria-controls="pane-frame" aria-selected="true"><i>01</i>Frame</button>
       <button class="tab" role="tab" id="tab-fabric" aria-controls="pane-fabric" aria-selected="false" tabindex="-1"><i>02</i><span id="tab2Label">Fabric</span></button>
-      <button class="tab" role="tab" id="tab-quote" aria-controls="pane-quote" aria-selected="false" tabindex="-1"><i>03</i>Quote</button>
+      <button class="tab" role="tab" id="tab-extras" aria-controls="pane-extras" aria-selected="false" tabindex="-1"><i>03</i>Extras</button>
+      <button class="tab" role="tab" id="tab-quote" aria-controls="pane-quote" aria-selected="false" tabindex="-1"><i>04</i>Quote</button>
     </div>
     <div class="tab-content">
       <div role="tabpanel" id="pane-frame" aria-labelledby="tab-frame">
@@ -510,21 +511,8 @@
           <div class="swatches wood-grid"></div>
         </div>
       </div>
-      <div role="tabpanel" id="pane-quote" aria-labelledby="tab-quote" hidden>
-        <figure class="preview"><img id="quotePreview" alt="Preview of your product"><figcaption id="quoteRef"></figcaption></figure>
-        <div class="section-label">Product</div>
-        <ul class="bom" id="bomList"></ul>
-        <div class="row qty-row">
-          <span class="section-label" style="margin:0">Quantity</span>
-          <div class="stepper">
-            <button id="qtyMinus" aria-label="Fewer">&minus;</button>
-            <output id="qtyCount" aria-live="polite">1</output>
-            <button id="qtyPlus" aria-label="More">+</button>
-          </div>
-        </div>
-        <div class="section-label">Finishes</div>
-        <div class="finish-rows" id="finishRows"></div>
-        <div class="section-label">Samples</div>
+      <div role="tabpanel" id="pane-extras" aria-labelledby="tab-extras" hidden>
+        <div class="section-label" style="margin-top:0">Samples</div>
         <label class="row sample-row" id="sampleFrameRow">
           <span><small>Request a frame color sample</small><b id="sampleFrameText">—</b></span>
           <span class="check"><input type="checkbox" id="sampleFrame"></span>
@@ -540,6 +528,29 @@
           <span class="check"><input type="checkbox" id="sampleWood"></span>
         </label>
         <div class="sample-extra" id="sampleWoodExtra" hidden></div>
+        <p class="hint" style="margin:0 0 4px">Each sample switch requests the finish you chose. Add up to two more of each kind below it.</p>
+        <div id="tableOpts">
+          <div class="section-label">Table options</div>
+          <label class="row sample-row" id="umbrellaRow">
+            <span><small>Umbrella hole in the table top</small><b id="umbrellaText">—</b></span>
+            <span class="check"><input type="checkbox" id="umbrellaChk"></span>
+          </label>
+        </div>
+      </div>
+      <div role="tabpanel" id="pane-quote" aria-labelledby="tab-quote" hidden>
+        <figure class="preview"><img id="quotePreview" alt="Preview of your product"><figcaption id="quoteRef"></figcaption></figure>
+        <div class="section-label">Product</div>
+        <ul class="bom" id="bomList"></ul>
+        <div class="row qty-row">
+          <span class="section-label" style="margin:0">Quantity</span>
+          <div class="stepper">
+            <button id="qtyMinus" aria-label="Fewer">&minus;</button>
+            <output id="qtyCount" aria-live="polite">1</output>
+            <button id="qtyPlus" aria-label="More">+</button>
+          </div>
+        </div>
+        <div class="section-label">Finishes</div>
+        <div class="finish-rows" id="finishRows"></div>
         <div class="section-label" id="detailsLabel">Your details</div>
         <div class="form-grid" id="quoteForm">
           <label class="inp" id="qNameWrap"><span>Name *</span><input id="qName" autocomplete="name"></label>
@@ -860,12 +871,16 @@ const TABLE_FAMILIES = [
     sizes: [['MT-30SQ', '30¾" square'], ['MT-36SQ', '36" square'], ['MT-42SQ', '42" square'], ['MT-48SQ', '48" square'],
             ['MT-24x36SQ', '24" × 36"'], ['MT-36x54SQ', '36" × 54"'], ['MT-42x72SQ', '42" × 72"'], ['MT-42x72SQ-A', '42" × 72" Alpha']] },
   { id: 'BALCONY',      group: 'balcony', name: 'Balcony Table',      sizes: [['I-29-52', '29" round'], ['I-30x60-52', '30" × 60"']] },
-  { id: 'BALCONY-SIDE', group: 'balcony', name: 'Balcony Side Table', sizes: [['C-18-52', '18" round'], ['I-18x34-52', '18" × 34"']] },
+  { id: 'BALCONY-SIDE', group: 'balcony', side: true, name: 'Balcony Side Table', sizes: [['C-18-52', '18" round'], ['I-18x34-52', '18" × 34"']] },
   { id: 'I-SIDE',       group: 'side',    name: 'I Series Side & End Table', sizes: [['I-18', '18" side table'], ['I-23', '23" end table']] },
   { id: 'MT-END',       group: 'side',    name: 'MT Wood Inset End Table',   sizes: [['MT-18SQ', '18" square'], ['MT-24SQ', '24" square']] },
 ];
 const isTableId = id => MODELS.some(m => m.id === id && m.type === 'table');
 // A table's family; a table in no family is a family of its own.
+// Umbrella hole: dining, balcony and bar height tables only, never side tables.
+const isSideTable = m => !!m && m.type === 'table' && (familyOf(m).group === 'side' || !!familyOf(m).side);
+const canUmbrella = m => !!m && m.type === 'table' && !isSideTable(m);
+const umbrellaOn = m => state.umbrella && canUmbrella(m);
 function familyOf(m) {
   return TABLE_FAMILIES.find(f => f.sizes.some(([id]) => id === m.id))
     || { id: 'M:' + m.id, group: m.dining ? 'dining' : 'side', name: m.name, sizes: [[m.id, '']] };
@@ -1103,7 +1118,8 @@ const state = {
   fabric: FABRICS[0].id,
   wood: WOOD_DEFAULT,       // PolyLumber color of a wood inset top (see WOOD_FINISHES)
   qty: 1,
-  addOn: false              // the product's add-on (e.g. the ottoman) switched on
+  addOn: false,             // the product's add-on (e.g. the ottoman) switched on
+  umbrella: false           // an umbrella hole in the table top (tables that can have one)
 };
 let selectedUid = null;     // (no floor plan here; kept for the shared animation code)
 const modelById = id => MODELS.find(m => m.id === id);
@@ -1175,6 +1191,7 @@ function saveHash() {
     else p.set('fabric', state.fabric);
     if (state.qty > 1) p.set('qty', String(state.qty));
     if (state.addOn) p.set('with', productModel().addOn);
+    if (umbrellaOn(productModel())) p.set('u', '1');
     history.replaceState(null, '', location.pathname + location.search + '#' + p.toString());
   } catch (e) { /* sandboxed frames may not allow it */ }
 }
@@ -1191,6 +1208,7 @@ function loadHash() {
     const q = parseInt(p.get('qty'), 10);
     if (q >= 1) state.qty = Math.min(MAX_QTY, q);
     if (m.addOn && (p.get('with') || '').toUpperCase() === m.addOn.toUpperCase()) state.addOn = true;
+    state.umbrella = p.get('u') === '1';
   } catch (e) { /* ignore a malformed link */ }
 }
 
@@ -1970,6 +1988,7 @@ function setupTabs() {
     });
     moveInk(tab);
     if (tab.id === 'tab-quote') refreshQuote();
+    if (tab.id === 'tab-extras') refreshExtras();
     if (tab.id === 'tab-fabric') drawTopPictures();
   };
   tabs.forEach((tab, i) => {
@@ -2173,6 +2192,7 @@ function updateSummary() {
   const m = productModel(), fabric = fabricById(state.fabric), c = COLORS[state.frame];
   const chips = [chip(m.id), chip(c.label, frameSwatchCSS(c))];
   if (state.addOn) chips.push(chip(`+ ${modelById(m.addOn).name}`));
+  if (umbrellaOn(m)) chips.push(chip('Umbrella hole'));
   if (m.tops) chips.push(chip(`${topName(product())} top`));
   else if (m.inset) chips.push(chip(`${woodById(state.wood).label} top`, woodCSS(woodById(state.wood))));
   else if (fabric && m.type === 'seat') chips.push(chip(fabric.label, `url("${fabric.thumbOk || fabric.thumb}") center / cover, #888`));
@@ -2472,7 +2492,8 @@ function addToQuoteCart() {
   const items = bomItems().map(it => ({
     model: it.m.id, qty: it.qty, frame: c ? c.label : '',
     fabric: it.m.type === 'seat' && f ? f.label : '',
-    top: it.top ? it.top.name : it.m.inset ? woodName(state.wood) : ''
+    top: it.top ? it.top.name : it.m.inset ? woodName(state.wood) : '',
+    umbrella: umbrellaOn(it.m) ? 'Yes' : ''
   }));
   const form = document.createElement('form');
   form.method = 'post'; form.action = quoteCart.url; form.target = '_top';   // the whole page, also inside a product page
@@ -2493,7 +2514,15 @@ const QUOTE_REF = (() => {
 const FORM_FIELDS = ['qName', 'qCompany', 'qEmail', 'qPhone', 'qLocation', 'qNotes'];
 const isQuoteOpen = () => !document.getElementById('pane-quote').hidden;
 
+function refreshExtras() {
+  refreshSamples();
+  const m = productModel(), ok = canUmbrella(m);
+  document.getElementById('tableOpts').hidden = !ok;
+  document.getElementById('umbrellaText').textContent = ok ? m.id : '—';
+  document.getElementById('umbrellaChk').checked = umbrellaOn(m);
+}
 function setupQuote() {
+  document.getElementById('umbrellaChk').addEventListener('change', e => { state.umbrella = e.target.checked; saveHash(); updateSummary(); });
   document.getElementById('quoteRef').textContent = QUOTE_REF;
   const hint = document.getElementById('quoteHint');
   hint.append('Opens your email app addressed to ');
@@ -2526,7 +2555,8 @@ function setupQuote() {
 function bomItems() {
   return state.pieces.map(p => {
     const m = modelById(p.id), t = topOf(m, p.top);
-    return { m, qty: state.qty, top: t, name: t ? `${m.name} · ${t.name} top` : m.inset ? `${m.name} · ${woodName(state.wood)} top` : m.name, code: t ? `${m.id}-${t.id}` : m.id };
+    const base = t ? `${m.name} · ${t.name} top` : m.inset ? `${m.name} · ${woodName(state.wood)} top` : m.name;
+    return { m, qty: state.qty, top: t, name: umbrellaOn(m) ? `${base} · umbrella hole` : base, code: t ? `${m.id}-${t.id}` : m.id };
   });
 }
 const customer = () => Object.fromEntries(FORM_FIELDS.map(id => [id, document.getElementById(id).value.trim()]));
@@ -2580,6 +2610,7 @@ function emailQuote() {
     ...bomItems().map(({ name, code, qty }) => `  ${qty} x ${name} (${code})`), '',
     `Frame finish: ${c.label}`,
     `${secondFinish().label === 'Top' ? (productModel().tops ? 'Top pattern' : 'Table top') : 'Fabric'}: ${secondFinish().name}`,
+    ...(umbrellaOn(productModel()) ? ['Umbrella hole: yes'] : []),
     ...sampleLines(),
     ...(link ? ['', `Configuration link: ${link}`] : []), '',
     'My details:',
