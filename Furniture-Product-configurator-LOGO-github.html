@@ -387,6 +387,12 @@
   .ps-fin .sw img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; display: block; }
   .ps-fin small { display: block; font-size: 8px; letter-spacing: .18em; text-transform: uppercase; color: #7d8b92; font-weight: 800; }
   .ps-fin b { font-weight: 700; }
+  .ps-smp-row { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid #e6ecef; font-size: 11px; }
+  .ps-smp-row > small { flex: none; width: 84px; padding-top: 6px; font-size: 8px; letter-spacing: .18em; text-transform: uppercase; color: #7d8b92; font-weight: 800; }
+  .ps-smp-row > div { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .ps-smp { display: inline-flex; align-items: center; gap: 6px; }
+  .ps-smp .sw { width: 22px; height: 22px; border-radius: 5px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); flex: none; }
+  .ps-smp .sw img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .ps-kv { font-size: 11px; line-height: 1.7; margin-top: 12px; }
   .ps-kv span { color: #7d8b92; display: inline-block; min-width: 72px; }
   .ps-notes { margin-top: 6px; font-size: 10.5px; color: #3a3631; white-space: pre-wrap; }
@@ -2876,8 +2882,15 @@ async function printPDF() {
           <div class="ps-fin">${fabricSw}<div><small>${sf.label}</small><b>${esc(sf.name)}</b></div></div>
           ${(() => {   // sample requests, so the customer can see what they asked for
             const rows = sampleKinds().map(k => [k, sampleList(k)]).filter(([, l]) => l.length);
-            return rows.length ? `<p class="ps-h" style="margin-top:14px">Samples requested</p><div class="ps-kv" style="margin-top:4px">${rows.map(([k, l]) =>
-              `<div><span>${esc(k.name[0].toUpperCase() + k.name.slice(1))}</span>${esc(l.join(', '))}</div>`).join('')}</div>` : '';
+            const sw = (key, label) => {     // the same little swatch as the finishes above
+              if (key === 'frame') { const c = COLORS.find(x => x.label === label); return !c ? '<span class="sw"></span>' : c.texture
+                ? `<span class="sw"><img src="${esc(c.thumbUrl || encodeURI(c.texture))}" alt=""></span>` : `<span class="sw" style="background:${esc(c.hex)}"></span>`; }
+              const x = key === 'fabric' ? FABRICS.find(y => y.label === label) : WOOD_FINISHES.find(y => y.label === label);
+              const src = !x ? '' : key === 'fabric' ? (x.thumbOk || x.thumb) : x.url;
+              return src ? `<span class="sw"><img src="${esc(src)}" alt=""></span>` : '<span class="sw"></span>';
+            };
+            return rows.length ? `<p class="ps-h" style="margin-top:14px">Samples requested</p>${rows.map(([k, l]) =>
+              `<div class="ps-smp-row"><small>${esc(k.name)}</small><div>${l.map(n => `<span class="ps-smp">${sw(k.key, n)}${esc(n)}</span>`).join('')}</div></div>`).join('')}` : '';
           })()}
           ${person || cu.qNotes ? `<p class="ps-h" style="margin-top:14px">Prepared for</p><div class="ps-kv">${person}</div>${cu.qNotes ? `<div class="ps-notes">${esc(cu.qNotes)}</div>` : ''}` : ''}
         </div>
