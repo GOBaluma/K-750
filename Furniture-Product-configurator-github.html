@@ -2647,6 +2647,28 @@ function emailQuote() {
 
 const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
+/* ---------- PDF images ---------- */
+// The PDF uses the small thumbnails (thumbs/), and falls back to the full image if a thumbnail is missing.
+const frameThumb = c => BASE + 'thumbs/' + encodeURIComponent(c.textureThumb || c.texture.split('/').pop());
+function pdfFull(src) {
+  const c = COLORS.find(x => x.texture && frameThumb(x) === src); if (c) return encodeURI(c.texture);
+  const f = FABRICS.find(x => x.thumb === src); if (f) return f.url;
+  const w = WOOD_FINISHES.find(x => x.thumb === src); if (w) return w.url;
+  return '';
+}
+// Wait (up to `ms`) until every image on the sheet has loaded, or failed even after its fallback.
+async function waitForImages(root, ms = 12000) {
+  root.querySelectorAll('img').forEach(i => {
+    const full = pdfFull(i.getAttribute('src'));
+    i.addEventListener('error', () => { if (full && !i.dataset.fell) { i.dataset.fell = '1'; i.src = full; } else i.dataset.fell = '2'; });
+  });
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    if ([...root.querySelectorAll('img')].every(i => i.complete && (i.naturalWidth > 0 || i.dataset.fell === '2'))) break;
+    await new Promise(r => setTimeout(r, 120));
+  }
+}
+
 async function printPDF() {
   const btn = document.getElementById('pdfBtn');
   btn.disabled = true;
@@ -2661,9 +2683,10 @@ async function printPDF() {
     const c = COLORS[state.frame], f = fabricById(state.fabric), cu = customer(), link = shareLink();
     const items = bomItems(), total = items.reduce((a, it) => a + it.qty, 0);
     const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-    const frameSw = c.texture ? `<span class="sw"><img src="${esc(c.thumbUrl || encodeURI(c.texture))}" alt=""></span>` : `<span class="sw" style="background:${esc(c.hex)}"></span>`;
+    const frameSw = c.texture ? `<span class="sw"><img src="${esc(frameThumb(c))}" alt=""></span>` : `<span class="sw" style="background:${esc(c.hex)}"></span>`;
     const sf = secondFinish();
-    const fabricSw = sf.img ? `<span class="sw"><img src="${esc(sf.img)}" alt=""${sf.label === 'Top' ? ' style="object-fit:contain;background:#1a3540"' : ''}></span>` : '<span class="sw"></span>';
+    const sfImg = sf.label === 'Fabric' ? (fabricById(state.fabric) || {}).thumb || sf.img : productModel().inset ? (woodById(state.wood) || {}).thumb || sf.img : sf.img;
+    const fabricSw = sfImg ? `<span class="sw"><img src="${esc(sfImg)}" alt=""${sf.label === 'Top' ? ' style="object-fit:contain;background:#1a3540"' : ''}></span>` : '<span class="sw"></span>';
     const person = [['Name', cu.qName], ['Company', cu.qCompany], ['Email', cu.qEmail], ['Phone', cu.qPhone], ['Location', cu.qLocation]]
       .filter(([, v]) => v).map(([k, v]) => `<div><span>${k}</span>${esc(v)}</div>`).join('');
 
@@ -2695,9 +2718,9 @@ async function printPDF() {
             const rows = sampleKinds().map(k => [k, sampleList(k)]).filter(([, l]) => l.length);
             const sw = (key, label) => {     // the same little swatch as the finishes above
               if (key === 'frame') { const c = COLORS.find(x => x.label === label); return !c ? '<span class="sw"></span>' : c.texture
-                ? `<span class="sw"><img src="${esc(c.thumbUrl || encodeURI(c.texture))}" alt=""></span>` : `<span class="sw" style="background:${esc(c.hex)}"></span>`; }
+                ? `<span class="sw"><img src="${esc(frameThumb(c))}" alt=""></span>` : `<span class="sw" style="background:${esc(c.hex)}"></span>`; }
               const x = key === 'fabric' ? FABRICS.find(y => y.label === label) : WOOD_FINISHES.find(y => y.label === label);
-              const src = !x ? '' : key === 'fabric' ? (x.thumbOk || x.thumb) : x.url;
+              const src = !x ? '' : x.thumb;
               return src ? `<span class="sw"><img src="${esc(src)}" alt=""></span>` : '<span class="sw"></span>';
             };
             return rows.length ? `<p class="ps-h" style="margin-top:14px">Samples requested</p>${rows.map(([k, l]) =>
@@ -2712,11 +2735,7 @@ async function printPDF() {
       </div>`;
 
     // Wait for the swatch images so they make it onto the page
-    const imgs = [...sheet.querySelectorAll('img')].filter(i => !i.complete);
-    await Promise.race([
-      Promise.all(imgs.map(i => new Promise(r => { i.onload = i.onerror = r; }))),
-      new Promise(r => setTimeout(r, 2500))
-    ]);
+    await waitForImages(sheet);
     window.print();
   } finally {
     btn.disabled = false;
