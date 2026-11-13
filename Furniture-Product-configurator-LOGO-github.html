@@ -2874,6 +2874,11 @@ async function printPDF() {
           <p class="ps-h">Finishes</p>
           <div class="ps-fin">${frameSw}<div><small>Frame</small><b>${esc(c.label)}</b></div></div>
           <div class="ps-fin">${fabricSw}<div><small>${sf.label}</small><b>${esc(sf.name)}</b></div></div>
+          ${(() => {   // sample requests, so the customer can see what they asked for
+            const rows = sampleKinds().map(k => [k, sampleList(k)]).filter(([, l]) => l.length);
+            return rows.length ? `<p class="ps-h" style="margin-top:14px">Samples requested</p><div class="ps-kv" style="margin-top:4px">${rows.map(([k, l]) =>
+              `<div><span>${esc(k.name[0].toUpperCase() + k.name.slice(1))}</span>${esc(l.join(', '))}</div>`).join('')}</div>` : '';
+          })()}
           ${person || cu.qNotes ? `<p class="ps-h" style="margin-top:14px">Prepared for</p><div class="ps-kv">${person}</div>${cu.qNotes ? `<div class="ps-notes">${esc(cu.qNotes)}</div>` : ''}` : ''}
         </div>
       </div>
