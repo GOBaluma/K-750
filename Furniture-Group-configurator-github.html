@@ -562,7 +562,7 @@
         <div class="fabric-grid" id="fabrics"></div>
         <div id="topWrap" hidden>
           <div class="section-label" style="margin-top:22px">Table top</div>
-          <label class="field" id="topAllRow" hidden>Top pattern <select id="topAll"></select></label>
+          <label class="field" id="topAllRow" hidden>Punch top pattern <select id="topAll"></select></label>
         </div>
         <div id="woodWrap" hidden>
           <div class="section-label" style="margin-top:18px">Wood inset table top</div>
@@ -725,17 +725,17 @@ const QUOTE_EMAIL = 'info@alumatech1.com';
 /* ---------- Table top patterns ---------- */
 // The CNC-cut top patterns. id = the pattern's code (it goes in the GLB file names and the share link),
 // name = what customers see. The first one is the default top. Add a pattern here, then upload its top GLB for each table.
+// Punch tops (patterned aluminum). code: the letter in the part number, e.g. C-36-M for a Mayan C-36 (C-36-MU with an
+// umbrella hole). The id is the top's file name, so HILO keeps its files but is now called Enterprise.
 const TABLE_TOPS = [
-  { id: 'PLAIN',       name: 'Plain' },
-  { id: 'BOARDWALK',   name: 'Boardwalk' },
-  { id: 'CANDYCANE',   name: 'Candy Cane' },
-  { id: 'CROP_CIRCLE', name: 'Crop Circle' },
-  { id: 'CROSSFIRE',   name: 'Crossfire' },
-  { id: 'ENTERPRISE',  name: 'Enterprise' },
+  { id: 'PLAIN',       name: 'Plain',      code: 'P' },
+  { id: 'BOARDWALK',   name: 'Boardwalk',  code: 'B' },
+  { id: 'CANDYCANE',   name: 'Candy Cane', code: 'CC' },
+  { id: 'CROSSFIRE',   name: 'Crossfire',  code: 'X' },
   { id: 'FIRELIGHT',   name: 'Firelight' },
-  { id: 'HILO',        name: 'HiLo' },
-  { id: 'MAYAN',       name: 'Mayan' },
-  { id: 'SUNFIRE',     name: 'Sunfire' },
+  { id: 'HILO',        name: 'Enterprise', code: 'H' },
+  { id: 'MAYAN',       name: 'Mayan',      code: 'M' },
+  { id: 'SUNFIRE',     name: 'Sunfire',    code: 'S' },
 ];
 // Some of the patterns, in the order given (the first is that table's default): topsFrom('MAYAN', 'PLAIN')
 const topsFrom = (...ids) => ids.map(id => TABLE_TOPS.find(t => t.id === id)).filter(Boolean);
@@ -767,7 +767,7 @@ const DINING_HEIGHT_IN = 29.5;
 //                         tops: TABLE_TOPS
 //                         tops: topsFrom('MAYAN', 'PLAIN', 'SUNFIRE')
 //                     Each top's file is the table's size (its id without the letter prefix) + _ + the pattern id:
-//                     42_MAYAN.glb for the I-42, 36_CROP_CIRCLE.glb for the C-36, 42x76_HILO.glb for the I-42x76.
+//                     42_MAYAN.glb for the I-42, 36_BOARDWALK.glb for the C-36, 42x76_HILO.glb for the I-42x76.
 //                     To use another file name for one table, give an object: { id: 'HILO', name: 'HiLo', file: 'x.glb' }
 //                     In the table's own GLB (the base), name the top's mesh or part TABLETOP (any case; "Table Top",
 //                     "TABLETOP-1" also work). It is removed and the chosen top is put exactly where it was, at its size,
@@ -820,27 +820,27 @@ const MODELS = [
   // (it takes it for an image thumbnail), so on the website they are I-42x76-1.glb and I-30x60-1.glb.
   // Tables with interchangeable tops: the first top listed is the default (Mayan on every table). Add a pattern to a table's
   // list once its top GLB is uploaded.
-  { id: 'I-42',    name: 'I-42 Round Dining Table',  type: 'table', file: 'I-42.glb',           normalizeFrameUV: false, dining: true,
-    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
-  { id: 'I-42x76', name: 'I-42x76 Oval Dining Table',type: 'table', file: 'I-42x76.glb',      normalizeFrameUV: false, dining: true,
-    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CROP_CIRCLE', 'HILO', 'SUNFIRE') },
+  { id: 'I-42',    part: 'R-42', name: 'R-42 Round Dining Table',  type: 'table', file: 'I-42.glb',           normalizeFrameUV: false, dining: true,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+  { id: 'I-42x76', part: 'R-42x76', name: 'R-42x76 Oval Dining Table',type: 'table', file: 'I-42x76.glb',      normalizeFrameUV: false, dining: true,
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'HILO', 'SUNFIRE') },
   { id: 'I-30x60', name: 'I-30x60 Dining Table',     type: 'table', file: 'I-30x60.glb',      normalizeFrameUV: false, dining: true,
     tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'SUNFIRE') },
   { id: 'C-36',    name: 'C-36 Round Dining Table',  type: 'table', file: 'C-36.glb',           normalizeFrameUV: false, dining: true,
-    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
   { id: 'C-54',    name: 'C-54 Round Dining Table',  type: 'table', file: 'C-54.glb',           normalizeFrameUV: false, dining: true,
     tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'HILO', 'SUNFIRE') },
   { id: 'I-23',    name: 'I-23 End Table',           type: 'table', file: 'I-23.glb',           normalizeFrameUV: false,
-    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
   { id: 'I-18',    name: 'I-18 Side Table',          type: 'table', file: 'I-18.glb',           normalizeFrameUV: false,
-    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
   // Balcony height (about 36" high): they pair with the *52 balcony chairs. Their tops use the same top files as the
   // dining table of that size (topSize), so the 18" and 30x60 patterns work on them too.
   { id: 'I-29-52',    name: 'I-29-52 Round Balcony Table',  type: 'table', file: 'I-29-52.glb',    normalizeFrameUV: false },
   { id: 'I-30x60-52', name: 'I-30x60-52 Balcony Table',     type: 'table', file: 'I-30x60-52.glb', normalizeFrameUV: false, topSize: '30x60',
     tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'SUNFIRE') },
   { id: 'C-18-52',    name: 'C-18-52 Balcony Side Table',   type: 'table', file: 'C-18-52.glb',    normalizeFrameUV: false, topSize: '18',
-    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
   // Turned so its long side runs front to back, parallel to the sides of the chairs it sits between.
   { id: 'I-18x34-52', name: 'I-18x34-52 Balcony Side Table', type: 'table', file: 'I-18x34-52.glb', normalizeFrameUV: false, yawDeg: 90 },
   // MT wood inset tables: an aluminum frame with a PolyLumber inset (inset: true = the TOP_INSET part takes the wood finish).
@@ -856,8 +856,8 @@ const MODELS = [
   { id: 'MT-18SQ',      name: 'MT-18SQ Wood Inset End Table',         type: 'table', file: 'MT-18SQ.glb',      normalizeFrameUV: false, inset: true },
   { id: 'MT-24SQ',      name: 'MT-24SQ Wood Inset End Table',         type: 'table', file: 'MT-24SQ.glb',      normalizeFrameUV: false, inset: true },
   // I-47: its tops are ready; remove the // once I-47.glb (the base, with its TABLETOP part) and 47_PLAIN.glb are uploaded.
-  // { id: 'I-47',    name: 'I-47 Round Dining Table',  type: 'table', file: 'I-47.glb',           normalizeFrameUV: false, dining: true,
-  //   tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CROP_CIRCLE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
+  // { id: 'I-47',    part: 'R-47', name: 'R-47 Round Dining Table',  type: 'table', file: 'I-47.glb',           normalizeFrameUV: false, dining: true,
+  //   tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
 ];
 
 // Product lines. A seat belongs to the line named by its `line`; tables have no line and go with every line.
@@ -882,6 +882,13 @@ function counterpart(id, lineId) {
   return fb && inLine.some(x => x.id === fb) ? fb : (inLine[0] || m).id;
 }
 // Name in the menus: the line is already chosen, so "K-750 Kona Dining Chair" shows as "K-750 Dining Chair".
+// The number the website uses (part: in MODELS, else the id), and the full part number with the top's letter and U for
+// an umbrella hole: R-42-M, C-36-MU, MT-36SQ-U.
+const partOf = m => (m && (m.part || m.id)) || '';
+function partNumber(m, t, hole) {
+  const code = t ? (t.code || t.name.toUpperCase().replace(/\W+/g, '')) : '';
+  return partOf(m) + (code || hole ? `-${code}${hole ? 'U' : ''}` : '');
+}
 const listName = m => { const L = lineOfModel(m); return L ? m.name.replace(' ' + L.name + ' ', ' ') : m.name; };
 
 // Turn every table's `tops` list into { id, name, file } entries (see `tops` above).
@@ -962,7 +969,7 @@ function familyOf(m) {
     || { id: 'M:' + m.id, group: m.dining ? 'dining' : 'side', name: m.name, sizes: [[m.id, '']] };
 }
 const familySizes = f => f.sizes.filter(([id]) => isTableId(id));       // only the sizes that are in MODELS
-const sizeLabel = (f, id) => { const s = f.sizes.find(([x]) => x === id); return s && s[1] ? `${s[1]} · ${id}` : id; };
+const sizeLabel = (f, id) => { const s = f.sizes.find(([x]) => x === id), n = partOf(modelById(id)) || id; return s && s[1] ? `${s[1]} · ${n}` : n; };
 function tableFamilies() {
   const out = [];
   MODELS.filter(m => m.type === 'table').forEach(m => { const f = familyOf(m); if (!out.some(x => x.id === f.id)) out.push(f); });
@@ -2779,7 +2786,7 @@ function updateSummary() {
   const tIds = [...new Set(tables.map(p => p.id))];
   const tableChip = !tables.length ? 'No table'
     : tIds.length === 1 ? `${tables.length > 1 ? tables.length + ' × ' : ''}${modelById(tIds[0]).name}${(() => {
-        const n = [...new Set(tables.map(topName))]; return n.length === 1 && n[0] ? ` · ${n[0]} top` : ''; })()}` : `${tables.length} tables`;
+        const n = [...new Set(tables.map(topName))]; return n.length === 1 && n[0] ? ` · ${n[0]} punch top` : ''; })()}` : `${tables.length} tables`;
   document.getElementById('summary').replaceChildren(
     chip(layoutName()), chip(`${seats} seat${seats === 1 ? '' : 's'}`), chip(tableChip),
     chip(c.label, frameSwatchCSS(c)),
@@ -2924,7 +2931,7 @@ function drawPlan() {
     const body = el('g', { transform: `rotate(${-THREE.MathUtils.radToDeg(p.rot)})` }, g);
     el('rect', { class: 'body', x: -fp.w / 2, y: -fp.d / 2, width: fp.w, height: fp.d, rx: Math.min(fp.w, fp.d) * (seat ? 0.12 : 0.22) }, body);
     if (seat) el('line', { class: 'front', x1: -fp.w * 0.3, y1: fp.d / 2 - 0.05, x2: fp.w * 0.3, y2: fp.d / 2 - 0.05 }, body);   // the front edge
-    el('text', { 'font-size': fs }, g).textContent = m.id;
+    el('text', { 'font-size': fs }, g).textContent = partOf(m);
   });
 
   // Handle for turning the selected piece, out in front of it
@@ -3345,7 +3352,8 @@ function addToQuoteCart() {
     model: it.m.id, qty: it.qty, frame: c ? c.label : '',
     fabric: it.m.type === 'seat' && f ? f.label : '',
     top: it.top ? it.top.name : it.m.inset ? woodName(state.wood) : '',
-    umbrella: umbrellaOn(it.m) ? 'Yes' : ''
+    umbrella: umbrellaOn(it.m) ? 'Yes' : '',
+    part: it.code
   }));
   const form = document.createElement('form');
   form.method = 'post'; form.action = quoteCart.url; form.target = '_top';   // the whole page, also inside a product page
@@ -3403,8 +3411,8 @@ function bomItems() {
     if (it) it.qty++;
     else {
       const m = modelById(p.id), t = topOf(m, p.top);
-      const base = t ? `${m.name} · ${t.name} top` : m.inset ? `${m.name} · ${woodName(state.wood)} top` : m.name;
-      counts.set(k, { m, qty: 1, top: t, name: umbrellaOn(m) ? `${base} · umbrella hole` : base, code: t ? `${m.id}-${t.id}` : m.id });
+      const base = t ? `${m.name} · ${t.name} punch top` : m.inset ? `${m.name} · ${woodName(state.wood)} top` : m.name;
+      counts.set(k, { m, qty: 1, top: t, name: umbrellaOn(m) ? `${base} · umbrella hole` : base, code: partNumber(m, t, umbrellaOn(m)) });
     }
   });
   return [...counts.values()];
