@@ -2598,7 +2598,9 @@ function startPattern(layoutId) {
   seatMemory.clear();             // a new pattern: forget which seat each position had in the other line
   const L = layoutById(layoutId), set = state.setting, D = L.defaults || {};
   const side = !!L.usesBetween;
-  const cur = tablePieces()[0], curM = cur ? modelById(cur.id) : null;
+  // Leaving a head-of-table pattern for another one: start that pattern fresh, without the head seats or the long tables.
+  const fromHeads = !!(state.preset && (layoutById(state.preset.id).defaults || {}).heads && !D.heads);
+  const cur = fromHeads ? null : tablePieces()[0], curM = cur ? modelById(cur.id) : null;
   let tableId;
   if (L.ownTable && modelById(D.table) && settingOf(modelById(D.table)) === set) tableId = D.table;
   else if (curM && settingOf(curM) === set && isSideTable(curM) === side) tableId = cur.id;
@@ -2607,7 +2609,7 @@ function startPattern(layoutId) {
     const fam = settingFamilies(set, side)[0] || settingFamilies(set)[0];
     tableId = fam ? familyPick(fam.id) : null;
   }
-  const seats = seatPieces().map(p => p.id).filter(id => settingOf(modelById(id)) === set);
+  const seats = (fromHeads ? seatPieces().slice(2) : seatPieces()).map(p => p.id).filter(id => settingOf(modelById(id)) === set);
   const opts = { tableId, between: tableId ? true : false };
   if (D.seats && set === 'lounge') opts.seatIds = D.seats.filter(id => modelById(id)).map(id => counterpart(id, state.line));
   else if (D.seat && set === 'lounge' && modelById(D.seat)) opts.seatIds = [counterpart(D.seat, state.line)];   // the chaise patterns
