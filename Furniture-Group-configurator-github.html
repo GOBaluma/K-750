@@ -859,6 +859,12 @@ const MODELS = [
     tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'CANDYCANE', 'CROSSFIRE', 'HILO', 'SUNFIRE') },
   // Turned so its long side runs front to back, parallel to the sides of the chairs it sits between.
   { id: 'I-18x34-52', name: 'I-18x34-52 Balcony Side Table', type: 'table', file: 'I-18x34-52.glb', normalizeFrameUV: false, yawDeg: 90 },
+  // Bar height (about 42" high): they pair with the *75 bar chairs. Like the balcony tables, the 30x60 uses the dining table's top files.
+  { id: 'I-29-75',    name: 'I-29-75 Round Bar Table',     type: 'table', file: 'I-29-75.glb',    normalizeFrameUV: false },
+  { id: 'I-30x60-75', name: 'I-30x60-75 Bar Table',        type: 'table', file: 'I-30x60-75.glb', normalizeFrameUV: false, topSize: '30x60',
+    tops: topsFrom('MAYAN', 'PLAIN', 'BOARDWALK', 'SUNFIRE') },
+  // Turned so its long side runs front to back, like the I-18x34-52.
+  { id: 'I-18x34-75', name: 'I-18x34-75 Bar Side Table',   type: 'table', file: 'I-18x34-75.glb', normalizeFrameUV: false, yawDeg: 90 },
   // MT = Eco Wood tables (formerly Modern Tangent): an aluminum frame with a PolyLumber inset (inset: true = the TOP_INSET part takes the wood finish).
   // The MT-30SQ is 30-3/4" square so the inset takes whole PolyLumber strips.
   { id: 'MT-30SQ',      part: 'EW-30SQ', name: 'EW-30SQ Eco Wood Dining Table',      type: 'table', file: 'MT-30SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
@@ -934,6 +940,7 @@ const tplKey = (id, topId) => { const t = topOf(modelById(id), topId); return t 
 const TABLE_GROUPS = [
   { id: 'dining',  name: 'Dining tables' },
   { id: 'balcony', name: 'Balcony tables' },
+  { id: 'bar',     name: 'Bar tables' },
   { id: 'side',    name: 'Side & end tables' },
 ];
 const TABLE_FAMILIES = [
@@ -945,6 +952,8 @@ const TABLE_FAMILIES = [
             ['MT-24x36SQ', '24" × 36"'], ['MT-36x54SQ', '36" × 54"'], ['MT-42x72SQ', '42" × 72"'], ['MT-42x72SQ-A', '42" × 72" Alpha']] },
   { id: 'BALCONY',      group: 'balcony', name: 'Balcony Table',      sizes: [['I-29-52', '29" round'], ['I-30x60-52', '30" × 60"']] },
   { id: 'BALCONY-SIDE', group: 'balcony', side: true, name: 'Balcony Side Table', sizes: [['C-18-52', '18" round'], ['I-18x34-52', '18" × 34"']] },
+  { id: 'BAR',          group: 'bar',     name: 'Bar Table',          sizes: [['I-29-75', '29" round'], ['I-30x60-75', '30" × 60"']] },
+  { id: 'BAR-SIDE',     group: 'bar',     side: true, name: 'Bar Side Table',     sizes: [['I-18x34-75', '18" × 34"']] },
   { id: 'I-SIDE',       group: 'side',    name: 'I Series Side & End Table', sizes: [['I-18', '18" side table'], ['I-23', '23" end table']] },
   { id: 'MT-END',       group: 'side',    name: 'Eco Wood End Table',   sizes: [['MT-18SQ', '18" square'], ['MT-24SQ', '24" square']] },
 ];
@@ -970,7 +979,7 @@ const settingById = id => SETTINGS.find(x => x.id === id) || SETTINGS[0];
 function settingOf(m) {
   if (!m) return 'dining';
   if (m.setting) return m.setting;
-  if (m.type === 'table') { const f = familyOf(m); return f.setting || { dining: 'dining', balcony: 'balcony', side: 'lounge' }[f.group] || 'dining'; }
+  if (m.type === 'table') { const f = familyOf(m); return f.setting || { dining: 'dining', balcony: 'balcony', bar: 'bar', side: 'lounge' }[f.group] || 'dining'; }
   const n = `${m.id} ${m.name}`.toUpperCase();
   if (/\bBAR\b|-75\b/.test(n)) return 'bar';
   if (/BALCONY|-52\b/.test(n)) return 'balcony';
