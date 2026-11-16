@@ -703,7 +703,7 @@ const DINING_HEIGHT_IN = 29.5;
 // TO ADD A NEW PRODUCT: upload its GLB to BASE, then add one entry to this list. Nothing else needs to change.
 //   id                short unique code (shown in the Pieces tab and kept in the share link)
 //   name              what customers see
-//   line              (seats) the product line: an id from LINES below ('kona', 'island').
+//   line              (seats) the product line: an id from LINES below ('kona', 'island', 'samoa').
 //   type              'seat'  = can be placed in the seating positions
 //                     'table' = can be used as the table
 //   file              GLB file name in BASE. Mesh names matter: a mesh whose name (or parent's name) contains
@@ -774,6 +774,15 @@ const MODELS = [
   { id: 'I-7675', line: 'island', part: 'I-375', name: 'I-375 Island Breeze Swivel Bar Chair', type: 'seat', file: 'I-7675.glb', fabricRepeat: 1, normalizeFrameUV: false },
   { id: 'I-7151-75', line: 'island', part: 'I-77', name: 'I-77 Island Breeze Armless Bar Chair', type: 'seat', file: 'I-7151-75.glb', fabricRepeat: 1, normalizeFrameUV: false },
   { id: 'I-7175', line: 'island', part: 'I-71', name: 'I-71 Island Breeze Backless Bar Stool', type: 'seat', file: 'I-7175.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  // Samoa line
+  { id: 'S-751', line: 'samoa', name: 'S-751 Samoa Dining Chair', type: 'seat', file: 'S-751.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'S-761', line: 'samoa', name: 'S-761 Samoa Swivel Chair', type: 'seat', file: 'S-761.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'S-7451', line: 'samoa', name: 'S-7451 Samoa High Back Dining Chair', type: 'seat', file: 'S-7451.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'S-7461', line: 'samoa', name: 'S-7461 Samoa High Back Swivel Chair', type: 'seat', file: 'S-7461.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
+  { id: 'S-7652', line: 'samoa', name: 'S-7652 Samoa Swivel Balcony Chair', type: 'seat', file: 'S-7652.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'S-74652', line: 'samoa', name: 'S-74652 Samoa High Back Swivel Balcony Chair', type: 'seat', file: 'S-74652.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'S-7675', line: 'samoa', name: 'S-7675 Samoa Swivel Bar Chair', type: 'seat', file: 'S-7675.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'S-74675', line: 'samoa', name: 'S-74675 Samoa High Back Swivel Bar Chair', type: 'seat', file: 'S-74675.glb', fabricRepeat: 1, normalizeFrameUV: false },
   // The I-42x76 and I-30x60 files end in -1: WordPress renames an upload whose name ends in -<number>x<number>
   // (it takes it for an image thumbnail), so on the website they are I-42x76-1.glb and I-30x60-1.glb.
   // Tables with interchangeable tops: the first top listed is the default (Mayan on every table). Add a pattern to a table's
@@ -823,8 +832,9 @@ const MODELS = [
 // no match uses the line's `fallback` for it, or else the line's first seat.
 // TO ADD A LINE: add it here, then give its seats `line: '<id>'` in MODELS.
 const LINES = [
-  { id: 'kona',   name: 'Kona',          fallback: { 'I-714': 'K-716', 'I-7450': 'K-7451', 'I-7151-52': 'K-752', 'I-7152': 'K-752', 'I-7151-75': 'K-775', 'I-7175': 'K-775' } },
-  { id: 'island', name: 'Island Breeze', fallback: { 'K-716': 'I-714', 'K-782': 'I-712', 'K-762': 'I-712', 'K-7462': 'I-712', 'K-7482': 'I-712', 'K-7452': 'I-752', 'K-74652': 'I-7652' } },
+  { id: 'kona',   name: 'Kona',          fallback: { 'I-714': 'K-716', 'I-7450': 'K-7451', 'I-7151-52': 'K-752', 'I-7152': 'K-752', 'I-7151-75': 'K-775', 'I-7175': 'K-775', 'S-74675': 'K-7675' } },
+  { id: 'island', name: 'Island Breeze', fallback: { 'K-716': 'I-714', 'K-782': 'I-712', 'K-762': 'I-712', 'K-7462': 'I-712', 'K-7482': 'I-712', 'K-7452': 'I-752', 'K-74652': 'I-7652', 'S-74652': 'I-7652', 'S-74675': 'I-7675' } },
+  { id: 'samoa',  name: 'Samoa',         fallback: { 'K-750': 'S-751', 'I-750': 'S-751', 'I-755': 'S-751', 'I-757': 'S-751', 'I-7450': 'S-7451', 'K-752': 'S-7652', 'I-752': 'S-7652', 'I-7151-52': 'S-7652', 'I-7152': 'S-7652', 'K-7452': 'S-74652', 'K-775': 'S-7675', 'I-775': 'S-7675', 'I-7151-75': 'S-7675', 'I-7175': 'S-7675', 'K-712': 'S-761', 'I-712': 'S-761', 'K-715': 'S-761', 'I-715': 'S-761', 'K-716': 'S-761', 'I-714': 'S-761', 'K-762': 'S-761', 'K-782': 'S-761', 'K-7462': 'S-7461', 'K-7482': 'S-7461' } },
 ];
 const lineById = id => LINES.find(l => l.id === id) || LINES[0];
 const lineOfModel = m => m && m.line ? lineById(m.line) : null;
