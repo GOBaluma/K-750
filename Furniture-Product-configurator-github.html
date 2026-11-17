@@ -672,7 +672,7 @@ const BASE = /\/configurator\/[^/]*$/i.test(location.pathname) || /github\.io$/i
   ? new URL('./', location.href).href : FILES_URL;
 // Model files are downloaded with this tag on the end. Change it (any new text, e.g. today's date) whenever you upload new
 // or replaced GLBs, so every browser fetches the new files at once instead of reusing an old copy for up to 10 minutes.
-const ASSET_VERSION = '2026-11-12a';
+const ASSET_VERSION = '2026-11-17a';
 
 // Where "Email for a quote" sends the request. Change it here if the address changes.
 const QUOTE_EMAIL = 'info@alumatech1.com';
@@ -821,6 +821,7 @@ const MODELS = [
   { id: 'MT-30SQ',      part: 'EW-30SQ', name: 'EW-30SQ Eco Wood Dining Table',      type: 'table', file: 'MT-30SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
   { id: 'MT-36SQ',      part: 'EW-36SQ', name: 'EW-36SQ Eco Wood Dining Table',      type: 'table', file: 'MT-36SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
   { id: 'MT-42SQ',      part: 'EW-42SQ', name: 'EW-42SQ Eco Wood Dining Table',      type: 'table', file: 'MT-42SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
+  { id: 'MT-42SQ-A',    part: 'EW-42SQ-A', name: 'EW-42SQ-A Eco Wood Dining Table (Alpha)', type: 'table', file: 'MT-42SQ-A.glb',    normalizeFrameUV: false, dining: true, inset: true },
   { id: 'MT-48SQ',      part: 'EW-48SQ', name: 'EW-48SQ Eco Wood Dining Table',      type: 'table', file: 'MT-48SQ.glb',      normalizeFrameUV: false, dining: true, inset: true },
   { id: 'MT-24x36SQ',   part: 'EW-24x36SQ', name: 'EW-24x36SQ Eco Wood Dining Table',   type: 'table', file: 'MT-24x36SQ.glb',   normalizeFrameUV: false, dining: true, inset: true },
   { id: 'MT-36x54SQ',   part: 'EW-36x54SQ', name: 'EW-36x54SQ Eco Wood Dining Table',   type: 'table', file: 'MT-36x54SQ.glb',   normalizeFrameUV: false, dining: true, inset: true },
@@ -899,7 +900,7 @@ const TABLE_FAMILIES = [
     sizes: [['I-42', '42" round'], ['I-47', '47" round'], ['I-42x76', '42" × 76" oval'], ['I-30x60', '30" × 60"']] },
   { id: 'C-DINING',     group: 'dining',  name: 'C Series Round Dining Table', sizes: [['C-36', '36" round'], ['C-54', '54" round']] },
   { id: 'MT-DINING',    group: 'dining',  name: 'Eco Wood Dining Table',
-    sizes: [['MT-30SQ', '30¾" square'], ['MT-36SQ', '36" square'], ['MT-42SQ', '42" square'], ['MT-48SQ', '48" square'],
+    sizes: [['MT-30SQ', '30¾" square'], ['MT-36SQ', '36" square'], ['MT-42SQ', '42" square'], ['MT-42SQ-A', '42" square Alpha'], ['MT-48SQ', '48" square'],
             ['MT-24x36SQ', '24" × 36"'], ['MT-36x54SQ', '36" × 54"'], ['MT-42x72SQ', '42" × 72"'], ['MT-42x72SQ-A', '42" × 72" Alpha']] },
   { id: 'BALCONY',      group: 'balcony', name: 'Balcony Table',      sizes: [['I-29-52', '29" round'], ['I-30x60-52', '30" × 60"']] },
   { id: 'BALCONY-SIDE', group: 'balcony', side: true, name: 'Balcony Side Table', sizes: [['C-18-52', '18" round'], ['I-18x34-52', '18" × 34"']] },
