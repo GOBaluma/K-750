@@ -1102,7 +1102,14 @@ function isInsetMesh(obj) {
 
 /* ---------- Surfaces ---------- */
 const FRAME_ROUGHNESS = 0.5;     // painted / powder-coated metal. 0 = mirror, 1 = fully matte
-const FABRIC_ROUGHNESS = 0.9;    // 1 = fully matte
+const FABRIC_ROUGHNESS = 1;      // 1 = fully matte
+// Fabric colour on the model, matched by measurement to the scanned swatches:
+//   FABRIC_TONE      the texture is multiplied by this so lit slings come out as bright as the scan (the stage lights add
+//                    up to more than one light's worth, so a full-strength texture looked bleached)
+//   FABRIC_SPECULAR  strength of the white sheen on top of the colour. The standard 100% laid a white film over every
+//                    fabric and drained its colour; a little keeps the weave from looking flat.
+const FABRIC_TONE = 0.62;
+const FABRIC_SPECULAR = 0.15;
 const WEAVE_BUMP = 1.5;          // 0 turns the fabric relief off, ~1 is subtle, 3+ is strong
 
 // Frame finishes tile FRAME_TEXTURE_REPEAT times per UV unit, and frame UVs are rescaled on load to FRAME_UV_PER_METRE
@@ -1971,7 +1978,8 @@ const nav = { vx: 0, vy: 0, vz: 0, hold: null };   // velocities for the dock's 
 
 // ONE material per surface, shared by every piece, so changing the finish changes the whole group at once.
 const frameMat = new THREE.MeshStandardMaterial({ color: COLORS[0].hex || '#111111', roughness: FRAME_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
-const fabricMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: FABRIC_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
+const fabricMat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color().setScalar(FABRIC_TONE), roughness: FABRIC_ROUGHNESS, metalness: 0,
+  specularIntensity: FABRIC_SPECULAR, side: THREE.DoubleSide });
 const insetMat = new THREE.MeshStandardMaterial({ color: '#b9ab98', roughness: WOOD_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
 const woodCache = new Map();
 let latestWood = null;
@@ -2042,8 +2050,10 @@ function init() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  // Neutral (Khronos PBR Neutral) keeps colours as they are up to the highlights. ACES Filmic, used before, pulled
+  // saturated colours toward pastel, so fabrics looked washed out next to their swatches.
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 0.9;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.getElementById('viewer').appendChild(renderer.domElement);
@@ -3922,7 +3932,7 @@ function applyFabric(id) {
   const apply = ({ map, bump }) => {
     if (latestFabric !== id) return;
     fabricMat.map = map;
-    fabricMat.color.set('#ffffff');
+    fabricMat.color.setScalar(FABRIC_TONE);
     fabricMat.bumpMap = bump;
     fabricMat.bumpScale = WEAVE_BUMP;
     fabricMat.needsUpdate = true;
