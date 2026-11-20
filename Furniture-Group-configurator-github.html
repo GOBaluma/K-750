@@ -439,7 +439,7 @@
 </style>
 </head>
 <body data-stage="night">
-<p id="colorNote" role="note">Colors shown are digital representations and may vary depending on individual screen and display settings. Fabric patterns are enlarged to show detail. Fabric samples are available upon request.</p>
+<p id="colorNote" role="note">Colors shown are digital representations and may vary depending on individual screen and display settings. Fabric patterns are shown at approximately actual size. Fabric samples are available upon request.</p>
 <script>
   // Keep the color disclaimer just below the left-hand panel as the panel opens, closes or resizes.
   document.addEventListener('DOMContentLoaded', () => {
@@ -1094,6 +1094,69 @@ const FABRIC_TONE = 0.62;
 const FABRIC_SPECULAR = 0.15;
 const WEAVE_BUMP = 1.5;          // 0 turns the fabric relief off, ~1 is subtle, 3+ is strong
 
+// REAL-SIZE FABRIC. Each image in tile/ repeats in both directions and covers a measured piece of fabric (w x h inches,
+// below), so the weave and stripes show at their true size on every model. Set FABRIC_REAL_SCALE = false to go back to
+// the earlier look (one image stretched across each sling panel, from the main folder).
+const FABRIC_REAL_SCALE = true;
+const FABRIC_TILE_DIR = 'tile/';
+// Randomised repeats, so a large seat doesn't show the same patch in a grid. Per fabric, `mix` is:
+//   'free'    plain weaves and textures: each patch starts at a random spot
+//   'stripe'  plain stripes: random spot along the stripes only, so the stripes stay continuous
+//   'off'     plaids, grids and motifs: a plain repeat, since random spots would cut the pattern
+// FABRIC_MIX_CELL is the patch size in repeats, FABRIC_MIX_EDGE how soft the joins between patches are (0..0.5).
+const FABRIC_STOCHASTIC = true;
+const FABRIC_MIX_CELL = 1.0;
+const FABRIC_MIX_EDGE = 0.12;
+const FABRIC_TILES = {
+  Straw: { w: 3.42, h: 4.881, mix: 'free' },
+  aquaf: { w: 4.602, h: 5.369, mix: 'stripe' },
+  aquam: { w: 3.564, h: 5.078, mix: 'off' },
+  blkpl: { w: 4.795, h: 4.718, mix: 'off' },
+  burke: { w: 4.432, h: 4.783, mix: 'off' },
+  cane: { w: 3.993, h: 4.772, mix: 'off' },
+  carc: { w: 4.638, h: 5.327, mix: 'free' },
+  ches: { w: 3.095, h: 4.789, mix: 'off' },
+  chplt: { w: 4.205, h: 5.449, mix: 'free' },
+  cpeac: { w: 5.404, h: 4.852, mix: 'stripe' },
+  creel: { w: 4.641, h: 5.634, mix: 'free' },
+  cwicd: { w: 4.948, h: 5.222, mix: 'off' },
+  delrs: { w: 3.413, h: 4.636, mix: 'stripe' },
+  dupo: { w: 4.997, h: 4.869, mix: 'off' },
+  dusap: { w: 4.809, h: 5.344, mix: 'off' },
+  dwood: { w: 3.225, h: 3.717, mix: 'off' },
+  eliz: { w: 4.541, h: 4.858, mix: 'stripe' },
+  fcafe: { w: 3.436, h: 4.984, mix: 'stripe' },
+  fesco: { w: 4.631, h: 4.473, mix: 'off' },
+  fgrpl: { w: 4.764, h: 5.446, mix: 'off' },
+  fsden: { w: 4.615, h: 5.601, mix: 'free' },
+  grey: { w: 4.841, h: 5.339, mix: 'off' },
+  hoff: { w: 4.9, h: 5.36, mix: 'free' },
+  intrl: { w: 4.594, h: 5.272, mix: 'free' },
+  kozoa: { w: 4.917, h: 4.736, mix: 'off' },
+  kozoj: { w: 4.523, h: 5.165, mix: 'free' },
+  lirb: { w: 4.817, h: 5.181, mix: 'off' },
+  madn: { w: 4.708, h: 4.789, mix: 'off' },
+  madtp: { w: 3.539, h: 4.999, mix: 'free' },
+  madts: { w: 3.74, h: 5.03, mix: 'free' },
+  madtu: { w: 3.981, h: 5.122, mix: 'off' },
+  montb: { w: 4.854, h: 5.43, mix: 'off' },
+  natu: { w: 5.004, h: 2.544, mix: 'free' },
+  navpl: { w: 4.899, h: 4.976, mix: 'free' },
+  ogawo: { w: 4.544, h: 5.166, mix: 'free' },
+  plata: { w: 4.737, h: 3.789, mix: 'off' },
+  rawl: { w: 4.568, h: 4.744, mix: 'free' },
+  seab: { w: 3.358, h: 4.813, mix: 'off' },
+  shelb: { w: 4.941, h: 3.351, mix: 'free' },
+  sndpl: { w: 4.717, h: 4.757, mix: 'off' },
+  spast: { w: 4.206, h: 5.073, mix: 'stripe' },
+  strwc: { w: 2.865, h: 4.999, mix: 'free' },
+  tiki: { w: 4.779, h: 3.58, mix: 'free' },
+  vblu: { w: 3.323, h: 5.348, mix: 'off' },
+  veran: { w: 4.463, h: 5.455, mix: 'off' },
+  whot: { w: 4.841, h: 5.254, mix: 'off' },
+  whtpl: { w: 4.816, h: 5.146, mix: 'off' }
+};
+
 // Frame finishes tile FRAME_TEXTURE_REPEAT times per UV unit, and frame UVs are rescaled on load to FRAME_UV_PER_METRE
 // UV units per metre (the K-750's value), so a finish has the same real-world grain everywhere: 1 / (32 x 0.2316) = 135 mm.
 const FRAME_TEXTURE_REPEAT = 32;
@@ -1200,7 +1263,7 @@ const FABRICS = [
   { id: 'whtpl' , label: 'FT-185 White Plus', file: 'FT-185_WHITE_PLUS.jpg' },
 ].map(f => ({
   ...f,
-  url: BASE + encodeURIComponent(f.file),                                            // full texture, loaded on click
+  url: BASE + (FABRIC_REAL_SCALE && FABRIC_TILES[f.id] ? FABRIC_TILE_DIR : '') + encodeURIComponent(f.file),  // full texture, loaded on click
   thumb: BASE + 'thumbs/' + encodeURIComponent(f.file.replace(/\.png$/i, '.jpg')),  // small preview (see make_thumbs.py)
 }));
 
@@ -1793,6 +1856,46 @@ const nav = { vx: 0, vy: 0, vz: 0, hold: null };   // velocities for the dock's 
 const frameMat = new THREE.MeshStandardMaterial({ color: COLORS[0].hex || '#111111', roughness: FRAME_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
 const fabricMat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color().setScalar(FABRIC_TONE), roughness: FABRIC_ROUGHNESS, metalness: 0,
   specularIntensity: FABRIC_SPECULAR, side: THREE.DoubleSide });
+// Randomised repeats (see FABRIC_STOCHASTIC). The surface is cut into patches about one repeat across; each patch
+// reads the image from its own random starting point, and neighbouring patches blend over a narrow soft edge.
+// The blend keeps the weave's contrast (it doesn't average two patches into a blur). Mode 0 = plain repeat.
+const fabricMix = { value: 0 };
+fabricMat.onBeforeCompile = shader => {
+  shader.uniforms.fabricMix = fabricMix;
+  const fn = `
+uniform float fabricMix;
+vec2 fabHash(vec2 p) { p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
+vec4 fabricSample(sampler2D tex, vec2 uv) {
+  vec2 gx = dFdx(uv), gy = dFdy(uv);
+  if (fabricMix < 0.5) return textureGrad(tex, uv, gx, gy);
+  vec2 q = uv / ${FABRIC_MIX_CELL.toFixed(4)} - 0.5;
+  vec2 i = floor(q), f = fract(q);
+  vec2 w = smoothstep(0.5 - ${FABRIC_MIX_EDGE.toFixed(4)}, 0.5 + ${FABRIC_MIX_EDGE.toFixed(4)}, f);
+  vec4 mean = textureLod(tex, uv, 12.0);
+  vec4 acc = vec4(0.0), lin = vec4(0.0); float ww = 0.0, ws = 0.0;
+  for (int k = 0; k < 4; k++) {
+    vec2 o = vec2(float(k & 1), float(k >> 1));
+    float wk = (o.x > 0.5 ? w.x : 1.0 - w.x) * (o.y > 0.5 ? w.y : 1.0 - w.y);
+    if (wk < 0.001) continue;
+    vec2 off = fabHash(i + o);
+    if (fabricMix < 1.5) off.x = 0.0;   // stripes: move along the stripes only
+    vec4 c = textureGrad(tex, uv + off, gx, gy);
+    acc += wk * (c - mean); lin += wk * c;
+    ww += wk * wk; ws += wk;
+  }
+  // Stripes: patches meet within the same stripe, so a plain blend keeps its colour. (The contrast-keeping blend
+  // below measures from the whole fabric's average, which would darken a wide solid stripe at every join.)
+  if (fabricMix < 1.5) return lin / max(ws, 1e-4);
+  return clamp(mean + acc / sqrt(max(ww, 1e-4)), 0.0, 1.0);
+}
+`;
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\n' + fn)
+    .replace('#include <map_fragment>', THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', 'fabricSample( map, vMapUv )'))
+    .replace('#include <bumpmap_pars_fragment>', THREE.ShaderChunk.bumpmap_pars_fragment.replaceAll('texture2D( bumpMap,', 'fabricSample( bumpMap,'));
+};
+fabricMat.customProgramCacheKey = () => 'fabric-mix';
+
 const insetMat = new THREE.MeshStandardMaterial({ color: '#b9ab98', roughness: WOOD_ROUGHNESS, metalness: 0, side: THREE.DoubleSide });
 const woodCache = new Map();
 let latestWood = null;
@@ -2032,6 +2135,28 @@ function isFabricMesh(obj) {
   return false;
 }
 
+// Rescales a fabric mesh's UVs to metres of real surface, measured with the mesh's own transform and the load-time
+// resize, so a texture with repeat = 1 / (tile size in metres) shows at true size.
+function fabricUVsToMetres(mesh, scale = 1) {
+  const g = mesh.geometry, pos = g.attributes.position, uv = g.attributes.uv;
+  if (!uv || g.userData.uvScaled) return;
+  const idx = g.index ? g.index.array : null, n = idx ? idx.length : pos.count, m = mesh.matrixWorld;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+  let worldArea = 0, uvArea = 0;
+  for (let i = 0; i < n; i += 3) {
+    const a = idx ? idx[i] : i, b = idx ? idx[i + 1] : i + 1, c = idx ? idx[i + 2] : i + 2;
+    A.fromBufferAttribute(pos, a).applyMatrix4(m); B.fromBufferAttribute(pos, b).applyMatrix4(m); C.fromBufferAttribute(pos, c).applyMatrix4(m);
+    worldArea += B.sub(A).cross(C.sub(A)).length() / 2;
+    uvArea += Math.abs((uv.getX(b) - uv.getX(a)) * (uv.getY(c) - uv.getY(a)) - (uv.getX(c) - uv.getX(a)) * (uv.getY(b) - uv.getY(a))) / 2;
+  }
+  worldArea *= scale * scale;
+  if (!worldArea || !uvArea) return;
+  const k = Math.sqrt(worldArea / uvArea);   // metres per UV unit
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * k, uv.getY(i) * k);
+  uv.needsUpdate = true;
+  g.userData.uvScaled = true;
+}
+
 function scaleUVs(geometry, k) {
   const uv = geometry.attributes.uv;
   if (!uv || k === 1 || geometry.userData.uvScaled) return;
@@ -2096,7 +2221,8 @@ function prepareTemplate(def, gltfScene) {
     } else if (isFabricMesh(obj)) {
       hasFabric = true;
       obj.material = fabricMat;
-      scaleUVs(obj.geometry, def.fabricRepeat || 1);
+      if (FABRIC_REAL_SCALE) fabricUVsToMetres(obj, uvScale);
+      else scaleUVs(obj.geometry, def.fabricRepeat || 1);
     } else {
       obj.material = frameMat;
       if (def.normalizeFrameUV) normalizeUVs(obj, uvScale);
@@ -3746,6 +3872,8 @@ function applyFabric(id) {
     fabricMat.color.setScalar(FABRIC_TONE);
     fabricMat.bumpMap = bump;
     fabricMat.bumpScale = WEAVE_BUMP;
+    const t = FABRIC_REAL_SCALE && FABRIC_TILES[id];
+    fabricMix.value = !t || !FABRIC_STOCHASTIC ? 0 : t.mix === 'free' ? 2 : t.mix === 'stripe' ? 1 : 0;
     fabricMat.needsUpdate = true;
   };
 
@@ -3755,8 +3883,8 @@ function applyFabric(id) {
   new THREE.TextureLoader().load(
     fabric.url,
     texture => {
-      configureFabricTexture(texture);
-      const entry = { map: texture, bump: WEAVE_BUMP > 0 ? makeWeaveBump(texture) : null };
+      configureFabricTexture(texture, true, id);
+      const entry = { map: texture, bump: WEAVE_BUMP > 0 ? makeWeaveBump(texture, id) : null };
       fabricCache.set(id, entry);
       apply(entry);
     },
@@ -3766,17 +3894,23 @@ function applyFabric(id) {
 }
 
 // The swatch repeat is built into each model's fabric UVs (fabricRepeat in MODELS), so the texture itself does not repeat.
-function configureFabricTexture(t, srgb = true) {
+function configureFabricTexture(t, srgb = true, id = null) {
   t.flipY = false; // required for glTF UVs
   t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  const tile = FABRIC_REAL_SCALE && FABRIC_TILES[id];
+  if (tile) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;           // real size: the image repeats both ways
+    t.repeat.set(1 / (tile.w * 0.0254), 1 / (tile.h * 0.0254));
+  } else {
   t.wrapS = THREE.ClampToEdgeWrapping; // width: one tile, so no seam
   t.wrapT = THREE.RepeatWrapping;       // length: stripes run along it, so tiling is invisible
+  }
   t.anisotropy = renderer.capabilities.getMaxAnisotropy();
 }
 
 // Builds a grayscale relief map of just the weave: the image's brightness minus a blurred copy of itself,
 // so large stripes and color changes cancel out and only the fine thread pattern remains.
-function makeWeaveBump(texture) {
+function makeWeaveBump(texture, id = null) {
   try {
     const N = 512;
     const c = document.createElement('canvas');
@@ -3795,7 +3929,7 @@ function makeWeaveBump(texture) {
     }
     g.putImageData(data, 0, 0);
     const bump = new THREE.CanvasTexture(c);
-    configureFabricTexture(bump, false);
+    configureFabricTexture(bump, false, id);
     return bump;
   } catch (err) {
     console.warn('Weave relief skipped:', err);
