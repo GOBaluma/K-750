@@ -1291,16 +1291,20 @@ vec4 fabricSample(sampler2D tex, vec2 uv) {
   vec2 i = floor(q), f = fract(q);
   vec2 w = smoothstep(0.5 - ${FABRIC_MIX_EDGE.toFixed(4)}, 0.5 + ${FABRIC_MIX_EDGE.toFixed(4)}, f);
   vec4 mean = textureLod(tex, uv, 12.0);
-  vec4 acc = vec4(0.0); float ww = 0.0;
+  vec4 acc = vec4(0.0), lin = vec4(0.0); float ww = 0.0, ws = 0.0;
   for (int k = 0; k < 4; k++) {
     vec2 o = vec2(float(k & 1), float(k >> 1));
     float wk = (o.x > 0.5 ? w.x : 1.0 - w.x) * (o.y > 0.5 ? w.y : 1.0 - w.y);
     if (wk < 0.001) continue;
     vec2 off = fabHash(i + o);
     if (fabricMix < 1.5) off.x = 0.0;   // stripes: move along the stripes only
-    acc += wk * (textureGrad(tex, uv + off, gx, gy) - mean);
-    ww += wk * wk;
+    vec4 c = textureGrad(tex, uv + off, gx, gy);
+    acc += wk * (c - mean); lin += wk * c;
+    ww += wk * wk; ws += wk;
   }
+  // Stripes: patches meet within the same stripe, so a plain blend keeps its colour. (The contrast-keeping blend
+  // below measures from the whole fabric's average, which would darken a wide solid stripe at every join.)
+  if (fabricMix < 1.5) return lin / max(ws, 1e-4);
   return clamp(mean + acc / sqrt(max(ww, 1e-4)), 0.0, 1.0);
 }
 `;
