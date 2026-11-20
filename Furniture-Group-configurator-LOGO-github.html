@@ -52,8 +52,8 @@
   #loading .small { margin-top: 8px; font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: var(--faint); }
   #loading.error .small { color: #ff8a80; letter-spacing: .04em; text-transform: none; font-size: 14px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  /* Alumatech logo on the loading screen (replaces the spinner once it has loaded) */
-  #loadingLogo { display: none; width: min(360px, 74vw); aspect-ratio: 2.2; margin: 0 auto 14px; }
+  /* FPF and Alumatech logos on the loading screen (replace the spinner once they have loaded) */
+  #loadingLogo { display: none; width: min(360px, 74vw); aspect-ratio: 1.95; margin: 0 auto 14px; }
   #loading.has-logo #loadingLogo { display: block; animation: logoIn .9s ease both; }
   #loading.has-logo .orb { display: none; }
   @keyframes logoIn { from { opacity: 0; transform: translateY(10px) scale(.96); } }
