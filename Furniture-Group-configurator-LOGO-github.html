@@ -53,7 +53,7 @@
   #loading.error .small { color: #ff8a80; letter-spacing: .04em; text-transform: none; font-size: 14px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   /* Alumatech logo on the loading screen (replaces the spinner once it has loaded) */
-  #loadingLogo { display: none; width: min(360px, 74vw); aspect-ratio: 3.4; margin: 0 auto 14px; }
+  #loadingLogo { display: none; width: min(360px, 74vw); aspect-ratio: 2.2; margin: 0 auto 14px; }
   #loading.has-logo #loadingLogo { display: block; animation: logoIn .9s ease both; }
   #loading.has-logo .orb { display: none; }
   @keyframes logoIn { from { opacity: 0; transform: translateY(10px) scale(.96); } }
@@ -368,7 +368,7 @@
     #printSheet { display: block; font-family: var(--sans); color: #10232b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
   .ps-head { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 12px; border-bottom: 2px solid #10232b; }
-  .ps-logo { display: block; height: 64px; width: auto; max-width: 3.6in; margin: 0 0 10px -2px; }
+  .ps-logo { display: block; height: 104px; width: auto; max-width: 3.6in; margin: 0 0 10px -2px; }
   .ps-meta { flex: none; padding-left: 16px; }
   .ps-co { margin-top: 8px; font-size: 9.5px; line-height: 1.5; color: #4a5a62; white-space: nowrap; }
   .ps-co b { color: #21809f; font-size: 10px; letter-spacing: 0; }
@@ -483,7 +483,7 @@
 <div id="loading" role="status">
   <div>
     <div class="orb" aria-hidden="true"></div>
-    <canvas id="loadingLogo" role="img" aria-label="Alumatech"></canvas>
+    <canvas id="loadingLogo" role="img" aria-label="Florida Patio Furniture and Alumatech"></canvas>
     <div class="big">Setting the <em>scene</em></div>
     <div class="small" id="loadingText">Loading your showroom</div>
   </div>
@@ -1795,26 +1795,48 @@ const loadingEl = document.getElementById('loading');
 const statusEl = document.getElementById('status');
 let scene, camera, renderer, controls, root, shadow, key, shadowCatcher, floorDisc, pulseRing, dust;
 
-/* ---------- Alumatech logo ---------- */
-// ALUMA_LOGO.glb goes in the same folder as the models (the address is already taken out of it). The logo appears on the
-// loading screen, as a medallion on the showroom floor, and on saved pictures and the PDF quote. If the file is missing,
-// the page simply works without it.
-const LOGO_FILE = 'ALUMA_LOGO.glb';
+/* ---------- Logos: Florida Patio Furniture above Alumatech ---------- */
+// FPF_LOGO.glb and ALUMA_LOGO.glb go in the same folder as the models. The two logos are stacked, Florida Patio Furniture
+// on top, and appear together on the loading screen, as a medallion on the showroom floor, and on saved pictures and the
+// PDF quote. If one file is missing the other shows alone; if both are missing the page simply works without them.
+const LOGO_FILES = ['FPF_LOGO.glb', 'ALUMA_LOGO.glb'];   // top to bottom
+const LOGO_TOP_WIDTH = 0.55;     // Florida Patio Furniture logo width, as a share of the Alumatech logo's width
+const LOGO_GAP = 0.08;           // space between the two logos, same units
 const LOGO_FLOOR_WIDTH = 0.6;    // floor medallion width, as a share of the group's radius
-const LOGO_FLOOR_AHEAD = 0.8;    // how far in front of the furniture it sits, same units
+const LOGO_FLOOR_AHEAD = 0.95;   // how far in front of the furniture it sits, same units
 const logoReady = (() => {
   const load = url => new GLTFLoader().loadAsync(url).then(g => g.scene);
-  return load(BASE + LOGO_FILE + '?v=' + encodeURIComponent(ASSET_VERSION))
-    .catch(() => load(new URL(LOGO_FILE, location.href).href))
-    .catch(e => { console.warn('Logo not loaded', e); return null; });
+  const loadOne = file => load(BASE + file + '?v=' + encodeURIComponent(ASSET_VERSION))
+    .catch(() => load(new URL(file, location.href).href))
+    .catch(e => { console.warn('Logo not loaded: ' + file, e); return null; });
+  return Promise.all(LOGO_FILES.map(loadOne)).then(([fpf, aluma]) => stackLogos(fpf, aluma));
 })();
 let floorLogo = null, logoStage = null;
 
-// A copy of the logo 1 unit wide, centred, lying flat and reading from the front. Chrome letters, black outline.
+// Lays the logos flat, one above the other ("above" is further from the viewer on the floor, and on top once stood up).
+function stackLogos(top, bottom) {
+  const pieces = [[bottom, 1], [top, LOGO_TOP_WIDTH]].filter(p => p[0]);
+  if (!pieces.length) return null;
+  const stack = new THREE.Group();
+  let edge = 0;                                   // the upper edge of what has been placed so far
+  for (const [src, width] of pieces) {
+    const o = src.clone(true);
+    const box = new THREE.Box3().setFromObject(o), w = box.max.x - box.min.x, s = width / w;
+    const c = box.getCenter(new THREE.Vector3());
+    o.scale.setScalar(s);
+    o.position.set(-c.x * s, -box.min.y * s, edge - box.max.z * s);
+    edge -= (box.max.z - box.min.z) * s + LOGO_GAP;
+    stack.add(o);
+  }
+  return stack;
+}
+
+// A copy of the logos 1 unit wide, centred, lying flat and reading from the front. Alumatech: chrome letters, black
+// outline. Florida Patio Furniture keeps the colours from its file: gray sling, black frame, chrome lettering.
 function makeLogo(src) {
   const inner = src.clone(true);
   inner.traverse(o => {
-    if (!o.isMesh) return;
+    if (!o.isMesh || /^FPF_/i.test(o.name)) return;
     const face = /FACE/i.test((o.material && o.material.name) || o.name);
     o.material = new THREE.MeshStandardMaterial(face
       ? { color: 0xeef3f6, metalness: 1, roughness: 0.14 }
@@ -1897,7 +1919,7 @@ let logoPng = null;
 function logoImage() {
   if (!logoPng) logoPng = logoReady.then(src => {
     if (!src) return null;
-    const W = 1400, H = 400;
+    const W = 1400, H = 720;
     const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     try {
       r.setSize(W, H, false);
@@ -1942,7 +1964,7 @@ async function stampLogo(url) {
     g.drawImage(pic, 0, 0);
     // A dark card in the bottom-right corner: the logo, then the address, phone numbers and website under it.
     const lines = [COMPANY.address, `${COMPANY.phone}  ·  Toll free ${COMPANY.tollFree}`, COMPANY.web];
-    const W = pic.width, margin = W * 0.018, inner = W * 0.2, padX = W * 0.012, padY = W * 0.011;
+    const W = pic.width, margin = W * 0.018, inner = W * 0.17, padX = W * 0.012, padY = W * 0.011;
     const fs = Math.round(W * 0.0098), lh = fs * 1.45;
     const lw = inner, lhgt = lw * logo.height / logo.width;
     const cw = inner + padX * 2, ch = padY + lhgt + fs * 0.6 + lh * lines.length + padY * 0.7;
@@ -3830,7 +3852,7 @@ async function printPDF() {
     const sheet = document.getElementById('printSheet');
     sheet.innerHTML = `
       <div class="ps-head">
-        <div>${logoSrc ? `<img class="ps-logo" src="${logoSrc}" alt="Alumatech">` : ""}<div class="ps-eyebrow">Furniture group configuration</div><div class="ps-title">${esc(configTitle())}</div></div>
+        <div>${logoSrc ? `<img class="ps-logo" src="${logoSrc}" alt="Florida Patio Furniture and Alumatech">` : ""}<div class="ps-eyebrow">Furniture group configuration</div><div class="ps-title">${esc(configTitle())}</div></div>
         <div class="ps-meta"><b>${esc(QUOTE_REF)}</b><br>${esc(date)}<div class="ps-co">${esc(COMPANY.address)}<br>${esc(COMPANY.phone)} · Toll free ${esc(COMPANY.tollFree)}<br><b>${esc(COMPANY.web)}</b></div></div>
       </div>
       <div class="ps-hero">${hero ? `<img src="${hero}" alt="">` : ''}</div>
