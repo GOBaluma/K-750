@@ -723,7 +723,7 @@ const BASE = /\/configurator\/[^/]*$/i.test(location.pathname) || /github\.io$/i
   ? new URL('./', location.href).href : FILES_URL;
 // Model files are downloaded with this tag on the end. Change it (any new text, e.g. today's date) whenever you upload new
 // or replaced GLBs, so every browser fetches the new files at once instead of reusing an old copy for up to 10 minutes.
-const ASSET_VERSION = '2026-11-23a';
+const ASSET_VERSION = '2026-11-24a';
 
 // Where "Email for a quote" sends the request. Change it here if the address changes.
 const QUOTE_EMAIL = 'info@alumatech1.com';
@@ -842,6 +842,10 @@ const MODELS = [
   { id: 'C-9461', line: 'cayman', num: '7461', name: 'C-9461 Cayman High Back Swivel Rocker', type: 'seat', file: 'C-9461.glb', fabricRepeat: 1, normalizeFrameUV: false, tuck: true },
   { id: 'C-9652', line: 'cayman', num: '7652', name: 'C-9652 Cayman Swivel Balcony Chair', type: 'seat', file: 'C-9652.glb', fabricRepeat: 1, normalizeFrameUV: false },
   { id: 'C-9675', line: 'cayman', num: '7675', name: 'C-9675 Cayman Swivel Bar Chair', type: 'seat', file: 'C-9675.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'C-952', line: 'cayman', num: '752', name: 'C-952 Cayman Balcony Chair', type: 'seat', file: 'C-952.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'C-94652', line: 'cayman', num: '74652', name: 'C-94652 Cayman High Back Swivel Balcony Chair', type: 'seat', file: 'C-94652.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'C-975', line: 'cayman', num: '775', name: 'C-975 Cayman Bar Chair', type: 'seat', file: 'C-975.glb', fabricRepeat: 1, normalizeFrameUV: false },
+  { id: 'C-94675', line: 'cayman', num: '74675', name: 'C-94675 Cayman High Back Swivel Bar Chair', type: 'seat', file: 'C-94675.glb', fabricRepeat: 1, normalizeFrameUV: false },
   // C-912: add `addOn: 'C-915'` once the C-915 ottoman is modeled and uploaded.
   { id: 'C-912', line: 'cayman', num: '712', name: 'C-912 Cayman Recliner', type: 'seat', file: 'C-912.glb', fabricRepeat: 1, normalizeFrameUV: false },
   { id: 'C-916', line: 'cayman', num: '716', name: 'C-916 Cayman Chaise Lounge', type: 'seat', file: 'C-916.glb', fabricRepeat: 1, normalizeFrameUV: false },
@@ -901,10 +905,10 @@ const MODELS = [
 // no match uses the line's `fallback` for it, or else the line's first seat.
 // TO ADD A LINE: add it here, then give its seats `line: '<id>'` in MODELS.
 const LINES = [
-  { id: 'kona',   name: 'Kona',          fallback: { 'I-714': 'K-716', 'I-7450': 'K-7451', 'I-7151-52': 'K-752', 'I-7152': 'K-752', 'I-7151-75': 'K-775', 'I-7175': 'K-775', 'S-74675': 'K-7675', 'C-956': 'K-751', 'C-9456': 'K-7451' } },
-  { id: 'island', name: 'Island Breeze', fallback: { 'K-716': 'I-714', 'K-782': 'I-712', 'K-762': 'I-712', 'K-7462': 'I-712', 'K-7482': 'I-712', 'K-7452': 'I-752', 'K-74652': 'I-7652', 'S-74652': 'I-7652', 'S-74675': 'I-7675', 'C-956': 'I-751', 'C-9456': 'I-7451', 'C-916': 'I-714' } },
-  { id: 'samoa',  name: 'Samoa',         fallback: { 'K-750': 'S-751', 'I-750': 'S-751', 'I-755': 'S-751', 'I-757': 'S-751', 'I-7450': 'S-7451', 'K-752': 'S-7652', 'I-752': 'S-7652', 'I-7151-52': 'S-7652', 'I-7152': 'S-7652', 'K-7452': 'S-74652', 'K-775': 'S-7675', 'I-775': 'S-7675', 'I-7151-75': 'S-7675', 'I-7175': 'S-7675', 'K-712': 'S-761', 'I-712': 'S-761', 'K-715': 'S-761', 'I-715': 'S-761', 'K-716': 'S-761', 'I-714': 'S-761', 'K-762': 'S-761', 'K-782': 'S-761', 'K-7462': 'S-7461', 'K-7482': 'S-7461', 'C-956': 'S-751', 'C-9456': 'S-7451', 'C-912': 'S-761', 'C-916': 'S-761' } },
-  { id: 'cayman', name: 'Cayman',        fallback: { 'K-750': 'C-951', 'I-750': 'C-951', 'I-755': 'C-951', 'I-757': 'C-951', 'I-7450': 'C-9451', 'K-7452': 'C-9652', 'K-752': 'C-9652', 'I-752': 'C-9652', 'I-7151-52': 'C-9652', 'I-7152': 'C-9652', 'K-74652': 'C-9652', 'S-74652': 'C-9652', 'K-775': 'C-9675', 'I-775': 'C-9675', 'I-7151-75': 'C-9675', 'I-7175': 'C-9675', 'S-74675': 'C-9675', 'K-715': 'C-912', 'I-715': 'C-912', 'I-714': 'C-916', 'K-762': 'C-961', 'K-782': 'C-961', 'K-7462': 'C-9461', 'K-7482': 'C-9461' } },
+  { id: 'kona',   name: 'Kona',          fallback: { 'I-714': 'K-716', 'I-7450': 'K-7451', 'I-7151-52': 'K-752', 'I-7152': 'K-752', 'I-7151-75': 'K-775', 'I-7175': 'K-775', 'S-74675': 'K-7675', 'C-956': 'K-751', 'C-9456': 'K-7451', 'C-94675': 'K-7675' } },
+  { id: 'island', name: 'Island Breeze', fallback: { 'K-716': 'I-714', 'K-782': 'I-712', 'K-762': 'I-712', 'K-7462': 'I-712', 'K-7482': 'I-712', 'K-7452': 'I-752', 'K-74652': 'I-7652', 'S-74652': 'I-7652', 'S-74675': 'I-7675', 'C-956': 'I-751', 'C-9456': 'I-7451', 'C-916': 'I-714', 'C-94652': 'I-7652', 'C-94675': 'I-7675' } },
+  { id: 'samoa',  name: 'Samoa',         fallback: { 'K-750': 'S-751', 'I-750': 'S-751', 'I-755': 'S-751', 'I-757': 'S-751', 'I-7450': 'S-7451', 'K-752': 'S-7652', 'I-752': 'S-7652', 'I-7151-52': 'S-7652', 'I-7152': 'S-7652', 'K-7452': 'S-74652', 'K-775': 'S-7675', 'I-775': 'S-7675', 'I-7151-75': 'S-7675', 'I-7175': 'S-7675', 'K-712': 'S-761', 'I-712': 'S-761', 'K-715': 'S-761', 'I-715': 'S-761', 'K-716': 'S-761', 'I-714': 'S-761', 'K-762': 'S-761', 'K-782': 'S-761', 'K-7462': 'S-7461', 'K-7482': 'S-7461', 'C-956': 'S-751', 'C-9456': 'S-7451', 'C-912': 'S-761', 'C-916': 'S-761', 'C-952': 'S-7652', 'C-975': 'S-7675' } },
+  { id: 'cayman', name: 'Cayman',        fallback: { 'K-750': 'C-951', 'I-750': 'C-951', 'I-755': 'C-951', 'I-757': 'C-951', 'I-7450': 'C-9451', 'K-7452': 'C-9652', 'K-752': 'C-9652', 'I-752': 'C-9652', 'I-7151-52': 'C-9652', 'I-7152': 'C-9652', 'K-74652': 'C-9652', 'S-74652': 'C-9652', 'K-775': 'C-9675', 'I-775': 'C-9675', 'I-7151-75': 'C-9675', 'I-7175': 'C-9675', 'S-74675': 'C-9675', 'K-715': 'C-912', 'I-715': 'C-912', 'I-714': 'C-916', 'K-762': 'C-961', 'K-782': 'C-961', 'K-7462': 'C-9461', 'K-7482': 'C-9461', 'K-7152': 'C-952', 'I-7152': 'C-952' } },
 ];
 const lineById = id => LINES.find(l => l.id === id) || LINES[0];
 const lineOfModel = m => m && m.line ? lineById(m.line) : null;
