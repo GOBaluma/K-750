@@ -389,6 +389,8 @@
   .ps-notes { margin-top: 6px; font-size: 10.5px; color: #3a3631; white-space: pre-wrap; }
   .ps-foot { margin-top: 18px; padding-top: 10px; border-top: 1px solid #cfd9de; display: flex; justify-content: space-between; gap: 16px; font-size: 9.5px; color: #4a5a62; break-inside: avoid; }
   .ps-foot b { color: #21809f; }
+  .ps-note { margin: 16px 0 0; font-size: 9px; line-height: 1.5; color: #5f6d74; font-style: italic; break-inside: avoid; }
+  .quote-note { margin: 10px 0 0; font-size: 11px; line-height: 1.45; font-style: italic; }
   .ps-link { word-break: break-all; max-width: 60%; text-align: right; }
 
   /* ---------- White "embedded" look (link has stage=light, e.g. on a WooCommerce product page) ---------- */
@@ -417,7 +419,7 @@
 </style>
 </head>
 <body data-stage="night">
-<p id="colorNote" role="note">Colors shown are digital representations and may vary depending on individual screen and display settings. Fabric patterns are shown at approximately actual size. Fabric samples are available upon request.</p>
+<p id="colorNote" role="note">Colors shown are digital representations and may vary depending on individual screen and display settings. Fabric patterns are shown at approximately actual size. Fabric samples are available upon request. Frame color, texture and the feel of the finish may also vary from what is shown.</p>
 <script>
   // Keep the color disclaimer just below the left-hand panel as the panel opens, closes or resizes.
   document.addEventListener('DOMContentLoaded', () => {
@@ -557,6 +559,7 @@
         </div>
         <div class="section-label">Finishes</div>
         <div class="finish-rows" id="finishRows"></div>
+        <p class="hint quote-note" id="quoteNote"></p>
         <div class="section-label" id="detailsLabel">Your details</div>
         <div class="form-grid" id="quoteForm">
           <label class="inp" id="qNameWrap"><span>Name *</span><input id="qName" autocomplete="name"></label>
@@ -672,7 +675,7 @@ const BASE = /\/configurator\/[^/]*$/i.test(location.pathname) || /github\.io$/i
   ? new URL('./', location.href).href : FILES_URL;
 // Model files are downloaded with this tag on the end. Change it (any new text, e.g. today's date) whenever you upload new
 // or replaced GLBs, so every browser fetches the new files at once instead of reusing an old copy for up to 10 minutes.
-const ASSET_VERSION = '2026-11-24b';
+const ASSET_VERSION = '2026-11-25a';
 
 // Where "Email for a quote" sends the request. Change it here if the address changes.
 const QUOTE_EMAIL = 'info@alumatech1.com';
@@ -881,6 +884,8 @@ function counterpart(id, lineId) {
 // The number the website uses (part: in MODELS, else the id), and the full part number with the top's letter and U for
 // an umbrella hole, written the catalog's way: R-42M, C-36MU, EW-36SQU.
 const partOf = m => (m && (m.part || m.id)) || '';
+// Numerical order by part number (K-712, K-750, K-751 ... K-7451), for the seat tiles and menus.
+const byPart = (a, b) => partOf(a).localeCompare(partOf(b), 'en', { numeric: true });
 function partNumber(m, t, hole) {
   const code = t ? (t.code || t.name.toUpperCase().replace(/\W+/g, '')) : '';
   return partOf(m) + code + (hole ? 'U' : '');
@@ -1103,8 +1108,9 @@ const FABRIC_TILES = {
 };
 
 // Frame finishes tile FRAME_TEXTURE_REPEAT times per UV unit, and frame UVs are rescaled on load to FRAME_UV_PER_METRE
-// UV units per metre (the K-750's value), so a finish has the same real-world grain everywhere: 1 / (32 x 0.2316) = 135 mm.
-const FRAME_TEXTURE_REPEAT = 32;
+// UV units per metre (the K-750's value), so a finish has the same real-world grain everywhere. Each finish image is a
+// seamless tile of 1.875" (47.6 mm) of the scanned 2" x 2" sample, so it shows at true size: 1 / (0.0476 x 0.2316) = 90.7.
+const FRAME_TEXTURE_REPEAT = 90.7;
 const FRAME_UV_PER_METRE = 0.2316;
 
 /* ---------- Finishes ---------- */
@@ -1121,7 +1127,6 @@ const COLORS = [
   { label: 'Ivory',  hex: '#e4e2cb' },
   { label: 'Vanilla',  hex: '#fcfee4' },
   { label: 'Yellow',  hex: '#fcf28a' },
-  { label: 'Citron',  hex: '#fcfab4' },
   { label: 'Driftwood',  hex: '#d4ce9c' },
   { label: 'Camel',  hex: '#fccd9c' },
   { label: 'Terracotta', hex: '#672d22' },
@@ -1145,6 +1150,7 @@ const COLORS = [
   { label: 'Bengal Silver', hex: '#939393' },
   { label: 'Textured Silver', hex: '#a4a4a4' },
   { label: 'Anthracite', texture: BASE + 'ANTHRACITE.jpg', textureThumb: 'ANTHRACITE.jpg'},
+  { label: 'Bronze Age', texture: BASE + 'BRONZE_AGE3.jpg', textureThumb: 'BRONZE_AGE3.jpg'},
   { label: 'Granite', texture: BASE + 'GRANITE.jpg', textureThumb: 'GRANITE.jpg'},
   { label: 'Luna', texture: BASE + 'LUNA.jpg', textureThumb: 'LUNA.jpg'},
   { label: 'Sahara', texture: BASE + 'SAHARA.jpg', textureThumb: 'SAHARA.jpg'},
@@ -1153,6 +1159,19 @@ const COLORS = [
   { label: 'Speckled Pearl', texture: BASE + 'SPECKLED PEARL.jpg', textureThumb: 'SPECKLED PEARL.jpg'},
   { label: 'Textured Pewter', texture: BASE + 'TEXTURED PEWTER.jpg', textureThumb: 'TEXTURED PEWTER.jpg'},
 ];
+// Share links store a finish by its number here, which never changes: new finishes go on the end, retired ones
+// (Citron) stay in the list so older links still open the finish they were made with, or the default if it was retired.
+const FRAME_LINK_ORDER = [
+  'Matte Black', 'Gloss Black', 'Graphite', 'Oil Rubbed Bronze', 'Adobe', 'White',
+  'Ivory', 'Vanilla', 'Yellow', 'Citron', 'Driftwood', 'Camel',
+  'Terracotta', 'Dark Green', 'French Blue', 'Royal Blue', 'Navy Blue', 'Grey',
+  'Jade', 'Clover', 'Leisure Brown', 'Putty', 'Coffee', 'Mistletoe',
+  'Papaya', 'Holly Green', 'Sherwood Green', 'Deepwater Blue', 'Forest Green', 'Dove',
+  'Bengal Silver', 'Textured Silver', 'Anthracite', 'Granite', 'Luna', 'Sahara',
+  'Silver Bronze Hammertone', 'Sonora', 'Speckled Pearl', 'Textured Pewter', 'Bronze Age',
+];
+const frameLinkId = i => String(FRAME_LINK_ORDER.indexOf(COLORS[i].label));
+const frameFromLink = v => { const n = parseInt(v, 10); return COLORS.findIndex(c => c.label === FRAME_LINK_ORDER[n]); };
 
 // Sling fabrics, as in the 2027 catalog (code + name). Images: 1024 px seamless tiles showing 5" of fabric, made
 // from 1200 dpi scans of the samples, with 256 px copies in thumbs/. Ids are kept from the earlier list where the
@@ -1289,7 +1308,7 @@ async function setAddOn(on) {
 // The link keeps the whole set-up, so a customer can bookmark or send it.
 function saveHash() {
   try {
-    const p = new URLSearchParams({ model: product().id, frame: String(state.frame) });
+    const p = new URLSearchParams({ model: product().id, frame: frameLinkId(state.frame) });
     if (productModel().tops) p.set('top', topOf(productModel(), product().top).id);
     else if (productModel().inset) p.set('wood', state.wood);
     else p.set('fabric', state.fabric);
@@ -1305,8 +1324,8 @@ function loadHash() {
   try {
     const p = new URLSearchParams(location.hash.slice(1));
     product().top = validTop(m.id, (p.get('top') || '').toUpperCase());
-    const f = parseInt(p.get('frame'), 10);
-    if (f >= 0 && f < COLORS.length) state.frame = f;
+    const f = frameFromLink(p.get('frame'));
+    if (f >= 0) state.frame = f;
     if (FABRICS.some(x => x.id === p.get('fabric'))) state.fabric = p.get('fabric');
     if (woodById(p.get('wood'))) state.wood = p.get('wood');
     const q = parseInt(p.get('qty'), 10);
@@ -2207,7 +2226,7 @@ function fillProductMenu() {
   // Tables: one entry per family under a heading per height group; the Size menu below picks the size
   const fam = m.type === 'table' ? familyOf(m) : null, tableGroups = familyOptions(fam && fam.id);
   tableGroups.forEach(og => og.querySelectorAll('option').forEach(o => { o.value = fam && o.value === fam.id ? m.id : familyPick(o.value); }));
-  msel.replaceChildren(group(`${lineById(pickLine).name} seating`, MODELS.filter(x => x.type === 'seat' && x.line === pickLine)), ...tableGroups);
+  msel.replaceChildren(group(`${lineById(pickLine).name} seating`, MODELS.filter(x => x.type === 'seat' && x.line === pickLine).sort(byPart)), ...tableGroups);
   msel.value = m.id;
   const many = !!fam && familySizes(fam).length > 1;
   document.getElementById('sizeRow').hidden = !many;
@@ -2683,6 +2702,8 @@ const QUOTE_REF = (() => {
   return `Q-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 })();
 const FORM_FIELDS = ['qName', 'qCompany', 'qEmail', 'qPhone', 'qLocation', 'qNotes'];
+// The color and finish disclaimer (the note under the panel), repeated on the Quote tab and the PDF.
+const disclaimerText = () => (document.getElementById('colorNote') || {}).textContent || '';
 const isQuoteOpen = () => !document.getElementById('pane-quote').hidden;
 
 function refreshExtras() {
@@ -2695,6 +2716,7 @@ function refreshExtras() {
 function setupQuote() {
   document.getElementById('umbrellaChk').addEventListener('change', e => { state.umbrella = e.target.checked; saveHash(); updateSummary(); });
   document.getElementById('quoteRef').textContent = QUOTE_REF;
+  document.getElementById('quoteNote').textContent = disclaimerText();
   const hint = document.getElementById('quoteHint');
   hint.append('Opens your email app addressed to ');
   const b = document.createElement('b'); b.textContent = QUOTE_EMAIL; hint.append(b);
@@ -2885,6 +2907,7 @@ async function printPDF() {
           ${person || cu.qNotes ? `<p class="ps-h" style="margin-top:14px">Prepared for</p><div class="ps-kv">${person}</div>${cu.qNotes ? `<div class="ps-notes">${esc(cu.qNotes)}</div>` : ''}` : ''}
         </div>
       </div>
+      <p class="ps-note">${esc(disclaimerText())}</p>
       <div class="ps-foot">
         <div>Request a quote: <b>${esc(QUOTE_EMAIL)}</b> · reference ${esc(QUOTE_REF)}</div>
         ${link ? `<div class="ps-link">${esc(link)}</div>` : ''}
@@ -2921,11 +2944,12 @@ function selectFrame(i) {
   if (frameTextures.has(i)) return apply(frameTextures.get(i));
 
   new THREE.TextureLoader().load(
-    c.texture,
+    c.texture + '?v=' + encodeURIComponent(ASSET_VERSION),   // the tag makes browsers fetch an updated finish image
     texture => {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(FRAME_TEXTURE_REPEAT, FRAME_TEXTURE_REPEAT);
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();   // the fine grain stays crisp at glancing angles
       frameTextures.set(i, texture);
       apply(texture);
     },

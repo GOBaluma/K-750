@@ -397,6 +397,8 @@
   .ps-notes { margin-top: 6px; font-size: 10.5px; color: #3a3631; white-space: pre-wrap; }
   .ps-foot { margin-top: 18px; padding-top: 10px; border-top: 1px solid #cfd9de; display: flex; justify-content: space-between; gap: 16px; font-size: 9.5px; color: #4a5a62; break-inside: avoid; }
   .ps-foot b { color: #21809f; }
+  .ps-note { margin: 16px 0 0; font-size: 9px; line-height: 1.5; color: #5f6d74; font-style: italic; break-inside: avoid; }
+  .quote-note { margin: 10px 0 0; font-size: 11px; line-height: 1.45; font-style: italic; }
   .ps-link { word-break: break-all; max-width: 60%; text-align: right; }
 
   /* ---------- Color disclaimer (sits just below the left-hand panel) ---------- */
@@ -427,10 +429,15 @@
   .pick-card.selected svg { color: var(--accent); }
   .pick-card b { font-size: 11.5px; font-weight: 800; letter-spacing: .02em; }
   .pick-card small { font-size: 10.5px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
+  .link-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .link-row .reset-layout { flex: none; }
   .link-btn { display: block; margin: 10px 0 0; padding: 0; font-size: 12px; font-weight: 700; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
   .pick-empty { grid-column: 1 / -1; margin: 0; }
+  .pick-line { grid-column: 1 / -1; margin: 10px 0 0; font-size: 9.5px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); }
+  .pick-line:first-child { margin-top: 0; }
   #addPicker { margin-top: 10px; padding: 10px; border-radius: 14px; border: 1px solid var(--line); background: rgba(0, 0, 0, .18); }
   #addPicker .section-label { margin-top: 10px; }
+  #addPicker .add-line { margin: 0 0 10px; }
   #addBtn { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line-strong); font-size: 13px; font-weight: 700; text-align: left; }
   #addBtn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
   #pieceList .piece-row:not(.sel) { display: none; }
@@ -439,7 +446,7 @@
 </style>
 </head>
 <body data-stage="night">
-<p id="colorNote" role="note">Colors shown are digital representations and may vary depending on individual screen and display settings. Fabric patterns are shown at approximately actual size. Fabric samples are available upon request.</p>
+<p id="colorNote" role="note">Colors shown are digital representations and may vary depending on individual screen and display settings. Fabric patterns are shown at approximately actual size. Fabric samples are available upon request. Frame color, texture and the feel of the finish may also vary from what is shown.</p>
 <script>
   // Keep the color disclaimer just below the left-hand panel as the panel opens, closes or resizes.
   document.addEventListener('DOMContentLoaded', () => {
@@ -527,7 +534,8 @@
         <div class="section-label" id="tableCardsLabel">Table</div>
         <div class="pick-grid" id="tableCards"></div>
         <label class="field" id="sizeAllRow" hidden style="margin-top:10px">Table size <select id="sizeAll"></select></label>
-        <button class="link-btn" id="showAll" type="button"></button>
+        <label class="field" id="topAllRow" hidden style="margin-top:10px">Table top pattern <select id="topAll"></select></label>
+        <div class="link-row"><button class="link-btn" id="showAll" type="button"></button><button class="link-btn reset-layout" type="button">Reset layout</button></div>
         <p class="hint" id="layoutHint"></p>
       </div>
       <div role="tabpanel" id="pane-layout" aria-labelledby="tab-layout" hidden>
@@ -548,12 +556,14 @@
           <button class="dk" id="delBtn" title="Remove" aria-label="Remove the selected piece"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
         </div>
         <div id="addPicker" hidden>
+          <label class="field add-line">Product line <select id="addLine" aria-label="Product line to add from"></select></label>
           <div class="wood-tabs set-tabs" id="addTabs" role="group" aria-label="Kind of piece to add"></div>
           <div class="section-label">Seats</div>
           <div class="pick-grid" id="addSeatCards"></div>
           <div class="section-label">Tables</div>
           <div class="pick-grid" id="addTableCards"></div>
         </div>
+        <button class="link-btn reset-layout" type="button">Reset layout</button>
         <p class="hint warn" id="planWarn" hidden>Pieces outlined in red overlap.</p>
         <div id="pieceList"></div>
         <p class="hint" id="pieceHint">Drag a piece to move it and drag its round handle to turn it. Tap a piece to change its model, size or top.</p>
@@ -566,10 +576,6 @@
       <div role="tabpanel" id="pane-fabric" aria-labelledby="tab-fabric" hidden>
         <p class="hint" id="fabricNote" style="margin:0 0 8px">One fabric for every seat in the group.</p>
         <div class="fabric-grid" id="fabrics"></div>
-        <div id="topWrap" hidden>
-          <div class="section-label" style="margin-top:22px">Table top</div>
-          <label class="field" id="topAllRow" hidden>Punch top pattern <select id="topAll"></select></label>
-        </div>
         <div id="woodWrap" hidden>
           <div class="section-label" style="margin-top:18px">Wood inset table top</div>
           <p class="hint" style="margin:0 0 12px">The PolyLumber color for the Eco Wood tables.</p>
@@ -608,6 +614,7 @@
         <ul class="bom" id="bomList"></ul>
         <div class="section-label">Finishes</div>
         <div class="finish-rows" id="finishRows"></div>
+        <p class="hint quote-note" id="quoteNote"></p>
         <div class="section-label" id="detailsLabel">Your details</div>
         <div class="form-grid" id="quoteForm">
           <label class="inp" id="qNameWrap"><span>Name *</span><input id="qName" autocomplete="name"></label>
@@ -723,7 +730,7 @@ const BASE = /\/configurator\/[^/]*$/i.test(location.pathname) || /github\.io$/i
   ? new URL('./', location.href).href : FILES_URL;
 // Model files are downloaded with this tag on the end. Change it (any new text, e.g. today's date) whenever you upload new
 // or replaced GLBs, so every browser fetches the new files at once instead of reusing an old copy for up to 10 minutes.
-const ASSET_VERSION = '2026-11-24b';
+const ASSET_VERSION = '2026-11-25a';
 
 // Where "Email for a quote" sends the request. Change it here if the address changes.
 const QUOTE_EMAIL = 'info@alumatech1.com';
@@ -930,6 +937,8 @@ function counterpart(id, lineId) {
 // The number the website uses (part: in MODELS, else the id), and the full part number with the top's letter and U for
 // an umbrella hole, written the catalog's way: R-42M, C-36MU, EW-36SQU.
 const partOf = m => (m && (m.part || m.id)) || '';
+// Numerical order by part number (K-712, K-750, K-751 ... K-7451), for the seat tiles and menus.
+const byPart = (a, b) => partOf(a).localeCompare(partOf(b), 'en', { numeric: true });
 function partNumber(m, t, hole) {
   const code = t ? (t.code || t.name.toUpperCase().replace(/\W+/g, '')) : '';
   return partOf(m) + code + (hole ? 'U' : '');
@@ -1179,8 +1188,9 @@ const FABRIC_TILES = {
 };
 
 // Frame finishes tile FRAME_TEXTURE_REPEAT times per UV unit, and frame UVs are rescaled on load to FRAME_UV_PER_METRE
-// UV units per metre (the K-750's value), so a finish has the same real-world grain everywhere: 1 / (32 x 0.2316) = 135 mm.
-const FRAME_TEXTURE_REPEAT = 32;
+// UV units per metre (the K-750's value), so a finish has the same real-world grain everywhere. Each finish image is a
+// seamless tile of 1.875" (47.6 mm) of the scanned 2" x 2" sample, so it shows at true size: 1 / (0.0476 x 0.2316) = 90.7.
+const FRAME_TEXTURE_REPEAT = 90.7;
 const FRAME_UV_PER_METRE = 0.2316;
 
 /* ---------- Finishes ---------- */
@@ -1197,7 +1207,6 @@ const COLORS = [
   { label: 'Ivory',  hex: '#e4e2cb' },
   { label: 'Vanilla',  hex: '#fcfee4' },
   { label: 'Yellow',  hex: '#fcf28a' },
-  { label: 'Citron',  hex: '#fcfab4' },
   { label: 'Driftwood',  hex: '#d4ce9c' },
   { label: 'Camel',  hex: '#fccd9c' },
   { label: 'Terracotta', hex: '#672d22' },
@@ -1221,6 +1230,7 @@ const COLORS = [
   { label: 'Bengal Silver', hex: '#939393' },
   { label: 'Textured Silver', hex: '#a4a4a4' },
   { label: 'Anthracite', texture: BASE + 'ANTHRACITE.jpg', textureThumb: 'ANTHRACITE.jpg'},
+  { label: 'Bronze Age', texture: BASE + 'BRONZE_AGE3.jpg', textureThumb: 'BRONZE_AGE3.jpg'},
   { label: 'Granite', texture: BASE + 'GRANITE.jpg', textureThumb: 'GRANITE.jpg'},
   { label: 'Luna', texture: BASE + 'LUNA.jpg', textureThumb: 'LUNA.jpg'},
   { label: 'Sahara', texture: BASE + 'SAHARA.jpg', textureThumb: 'SAHARA.jpg'},
@@ -1229,6 +1239,19 @@ const COLORS = [
   { label: 'Speckled Pearl', texture: BASE + 'SPECKLED PEARL.jpg', textureThumb: 'SPECKLED PEARL.jpg'},
   { label: 'Textured Pewter', texture: BASE + 'TEXTURED PEWTER.jpg', textureThumb: 'TEXTURED PEWTER.jpg'},
 ];
+// Share links store a finish by its number here, which never changes: new finishes go on the end, retired ones
+// (Citron) stay in the list so older links still open the finish they were made with, or the default if it was retired.
+const FRAME_LINK_ORDER = [
+  'Matte Black', 'Gloss Black', 'Graphite', 'Oil Rubbed Bronze', 'Adobe', 'White',
+  'Ivory', 'Vanilla', 'Yellow', 'Citron', 'Driftwood', 'Camel',
+  'Terracotta', 'Dark Green', 'French Blue', 'Royal Blue', 'Navy Blue', 'Grey',
+  'Jade', 'Clover', 'Leisure Brown', 'Putty', 'Coffee', 'Mistletoe',
+  'Papaya', 'Holly Green', 'Sherwood Green', 'Deepwater Blue', 'Forest Green', 'Dove',
+  'Bengal Silver', 'Textured Silver', 'Anthracite', 'Granite', 'Luna', 'Sahara',
+  'Silver Bronze Hammertone', 'Sonora', 'Speckled Pearl', 'Textured Pewter', 'Bronze Age',
+];
+const frameLinkId = i => String(FRAME_LINK_ORDER.indexOf(COLORS[i].label));
+const frameFromLink = v => { const n = parseInt(v, 10); return COLORS.findIndex(c => c.label === FRAME_LINK_ORDER[n]); };
 
 // Sling fabrics, as in the 2027 catalog (code + name). Images: 1024 px seamless tiles showing 5" of fabric, made
 // from 1200 dpi scans of the samples, with 256 px copies in thumbs/. Ids are kept from the earlier list where the
@@ -1729,6 +1752,7 @@ const state = {
 };
 let nextUid = 1;
 let showAllPicks = false;    // Start tab: list every seat and table, not only those for the setting
+let addLine = null;         // Plan tab: the product line the add-a-piece seats come from (mix and match)
 let addSetting = null;      // Plan tab: the setting shown in the add-a-piece cards
 const newPiece = (id, p) => ({ uid: nextUid++, id, x: p.x, z: p.z, rot: p.rot || 0, top: p.top || null });
 // The chosen top id of a piece (null: default or no tops). Kept only if the piece's model has that top.
@@ -1771,6 +1795,28 @@ function piecesBounds(list = state.pieces) {
 // Lay out a pattern. Its models are loaded first, since the spacing depends on their real size.
 // opts: n (seats), tableId (null = no table), seatIds (one per seat, extended with the last), between.
 let presetToken = 0;
+// Reset layout: the pattern as it first loads, with its usual seats in the selected product line (head-of-table patterns
+// get their head seats back), its usual seat count and spacing. The table (if it suits the pattern), top and finishes stay. The button offers "Undo reset" for a few seconds afterwards.
+let lastPattern = null, resetUndo = null, resetTimer = 0;
+function resetLayout() {
+  const btns = document.querySelectorAll('.reset-layout');
+  if (resetUndo) {                                    // Undo reset
+    state.pieces = resetUndo.pieces; state.preset = resetUndo.preset; resetUndo = null;
+    clearTimeout(resetTimer); btns.forEach(b => { b.textContent = 'Reset layout'; });
+    selectedUid = null; planFit(); commit({ fly: true }); toast('Layout restored');
+    return;
+  }
+  const allowed = layoutsFor(state.setting), fallback = settingById(state.setting).layout;
+  const last = lastPattern || (state.preset && state.preset.id);
+  const id = last && layoutById(last) ? last : (allowed.includes(fallback) ? fallback : allowed[0]);
+  if (!id) return;
+  resetUndo = { pieces: state.pieces.map(p => ({ ...p })), preset: state.preset && { ...state.preset } };
+  startPattern(id, { fresh: true });
+  toast(`Layout reset to ${layoutById(id).name}`);
+  btns.forEach(b => { b.textContent = 'Undo reset'; });
+  clearTimeout(resetTimer);
+  resetTimer = setTimeout(() => { resetUndo = null; btns.forEach(b => { b.textContent = 'Reset layout'; }); }, 10000);
+}
 async function applyPreset(layoutId, opts = {}) {
   const L = layoutById(layoutId), D = L.defaults || {};
   const tableId = 'tableId' in opts ? opts.tableId : (modelById(D.table) ? D.table : ((tableModels()[0] || {}).id || null));
@@ -1802,6 +1848,7 @@ async function applyPreset(layoutId, opts = {}) {
   pieces.forEach(p => { p.x -= cx; p.z -= cz; });
   state.pieces = pieces;
   state.preset = { id: layoutId, between, tableId };
+  lastPattern = layoutId;
   selectedUid = null;
   planFit();
   commit({ fly: true });
@@ -1822,7 +1869,7 @@ function saveHash() {
   try {
     const p = new URLSearchParams({
       g: state.pieces.map(q => `${q.id}~${q.x.toFixed(3)}~${q.z.toFixed(3)}~${+THREE.MathUtils.radToDeg(q.rot).toFixed(1)}${q.top ? '~' + q.top : ''}`).join(','),
-      frame: String(state.frame), fabric: state.fabric });
+      frame: frameLinkId(state.frame), fabric: state.fabric });
     if (state.preset) p.set('preset', `${state.preset.id}~${state.preset.between ? 1 : 0}~${state.preset.tableId || ''}`);
     p.set('line', state.line);
     p.set('set', state.setting);
@@ -1841,8 +1888,8 @@ function loadHash() {
     });
     const pr = (p.get('preset') || '').split('~');
     if (state.pieces.length && layoutById(pr[0])) state.preset = { id: pr[0], between: pr[1] !== '0', tableId: modelById(pr[2]) ? pr[2] : null };
-    const f = parseInt(p.get('frame'), 10);
-    if (f >= 0 && f < COLORS.length) state.frame = f;
+    const f = frameFromLink(p.get('frame'));
+    if (f >= 0) state.frame = f;
     if (FABRICS.some(x => x.id === p.get('fabric'))) state.fabric = p.get('fabric');
     if (woodById(p.get('wood'))) state.wood = p.get('wood');
     // Product line: from the link, or else from the first seat that has one
@@ -2631,7 +2678,9 @@ function buildUI() {
     addTabs.append(a);
   });
   document.getElementById('showAll').addEventListener('click', () => { showAllPicks = !showAllPicks; refreshControls(); });
+  document.querySelectorAll('.reset-layout').forEach(b => b.addEventListener('click', resetLayout));
   document.getElementById('addBtn').addEventListener('click', () => toggleAddPicker());
+  document.getElementById('addLine').addEventListener('change', e => { addLine = e.target.value; fillAddMenu(); });
   document.getElementById('umbrellaChk').addEventListener('change', e => { state.umbrella = e.target.checked; saveHash(); refreshExtras(); updateSummary(); });
   document.getElementById('seatMinus').addEventListener('click', () => rearrange({ n: seatPieces().length - 1 }));
   document.getElementById('seatPlus').addEventListener('click', () => rearrange({ n: seatPieces().length + 1 }));
@@ -2750,7 +2799,7 @@ function settingFamilies(setId, side) {
 const layoutsFor = setId => (SETTING_LAYOUTS[setId] || LAYOUTS.map(L => L.id)).filter(id => layoutById(id)
   && (layoutById(id).usesBetween || settingFamilies(setId, false).length));      // a table pattern needs a main table
 // Lay out a pattern for the current setting: its seats, and a table of the right height and kind.
-function startPattern(layoutId) {
+function startPattern(layoutId, { fresh = false } = {}) {   // fresh: ignore the seats already placed (Reset layout)
   seatMemory.clear();             // a new pattern: forget which seat each position had in the other line
   const L = layoutById(layoutId), set = state.setting, D = L.defaults || {};
   const side = !!L.usesBetween;
@@ -2765,7 +2814,7 @@ function startPattern(layoutId) {
     const fam = settingFamilies(set, side)[0] || settingFamilies(set)[0];
     tableId = fam ? familyPick(fam.id) : null;
   }
-  const seats = (fromHeads ? seatPieces().slice(2) : seatPieces()).map(p => p.id).filter(id => settingOf(modelById(id)) === set);
+  const seats = fresh ? [] : (fromHeads ? seatPieces().slice(2) : seatPieces()).map(p => p.id).filter(id => settingOf(modelById(id)) === set);
   const opts = { tableId, between: tableId ? true : false };
   if (D.seats && set === 'lounge') opts.seatIds = D.seats.filter(id => modelById(id)).map(id => counterpart(id, state.line));
   else if (D.seat && set === 'lounge' && modelById(D.seat)) opts.seatIds = [counterpart(D.seat, state.line)];   // the chaise patterns
@@ -2818,9 +2867,19 @@ function refreshStart() {
   const headsOn = !!(state.preset && (layoutById(state.preset.id).defaults || {}).heads && seats.length > 2);
   const sideSeats = () => headsOn ? seatPieces().slice(2) : seatPieces();       // the head seats are seats 0 and 1
   const seatIds = new Set(sideSeats().map(p => p.id)), oneSeat = seatIds.size === 1 ? [...seatIds][0] : null;
-  const seatList = seatModels().filter(m => showAllPicks || settingOf(m) === set);
-  const seatCards = seatList.map(m => pickCard(m, { title: partOf(m), sub: shortName(m), selected: m.id === oneSeat,
-    onPick: () => seats.length ? setModels(sideSeats(), m.id) : addPiece(m.id) }));
+  const seatCard = m => pickCard(m, { title: partOf(m), selected: m.id === oneSeat,
+    sub: m.line && m.line !== state.line ? `${lineById(m.line).name} · ${shortName(m)}` : shortName(m),
+    onPick: () => seats.length ? setModels(sideSeats(), m.id) : addPiece(m.id) });
+  let seatCards;
+  if (showAllPicks) {
+    // Show all: every line's seats under its name, the chosen line first and this setting's seats first in each line
+    const lineHead = text => { const e = document.createElement('div'); e.className = 'pick-line'; e.textContent = text; return e; };
+    const first = list => { list = [...list].sort(byPart); return list.filter(m => settingOf(m) === set).concat(list.filter(m => settingOf(m) !== set)); };
+    seatCards = [lineById(state.line), ...LINES.filter(L => L.id !== state.line)].flatMap(L => {
+      const list = first(L.id === state.line ? seatModels() : MODELS.filter(m => m.type === 'seat' && m.line === L.id));
+      return list.length ? [lineHead(`${L.name}${L.id === state.line ? '' : ' · mix and match'}`), ...list.map(seatCard)] : [];
+    });
+  } else seatCards = seatModels().filter(m => settingOf(m) === set).sort(byPart).map(seatCard);
   if (headsOn) seatCards.unshift(emptyNote('Picking a seat here changes the side chairs. The two head seats stay as they are; change them on the Plan tab.'));
   else if (seatIds.size > 1) seatCards.unshift(emptyNote('This pattern mixes seats. Picking one here changes every seat; change single seats on the Plan tab.'));
   document.getElementById('seatCards').replaceChildren(...seatCards);
@@ -2839,7 +2898,7 @@ function refreshStart() {
   const sameTable = tables.length > 0 && tables.every(p => p.id === tables[0].id);
   document.getElementById('sizeAllRow').hidden = !(fam0 && familySizes(fam0).length > 1);
   if (fam0) sizeAll.replaceChildren(...(sameTable ? [] : [option('', 'Mixed', true)]), ...sizeOptions(fam0, sameTable ? tables[0].id : null));
-  document.getElementById('showAll').textContent = showAllPicks ? `Show only ${settingById(set).name.toLowerCase()} pieces` : 'Show all seats, tables and patterns';
+  document.getElementById('showAll').textContent = showAllPicks ? `Show only ${settingById(set).name.toLowerCase()} pieces` : 'Show all seats, tables and patterns, including other product lines';
 }
 
 /* ---------- Extras tab: samples and table options ---------- */
@@ -2873,7 +2932,9 @@ function setModels(list, id) {
 const seatMemory = new Map();   // piece uid -> { line id: model id }
 function setLine(id) {
   if (!LINES.some(l => l.id === id) || id === state.line) return;
-  seatPieces().forEach(p => {
+  // A group that already mixes lines keeps its seats: the line then only sets what the pickers offer first
+  const mixed = new Set(seatPieces().map(p => modelById(p.id).line).filter(Boolean)).size > 1;
+  if (!mixed) seatPieces().forEach(p => {
     const mem = seatMemory.get(p.uid) || {};
     const m = modelById(p.id);
     if (m.line) mem[m.line] = p.id;
@@ -2896,9 +2957,20 @@ const topName = p => { const t = topOf(modelById(p.id), p.top); return t ? t.nam
 function seatOptionsBySetting(currentId) {
   const list = seatChoices(currentId);
   return SETTINGS.map(S => {
-    const ms = list.filter(m => settingOf(m) === S.id);
+    const ms = list.filter(m => settingOf(m) === S.id).sort(byPart);
     if (!ms.length) return null;
     const g = document.createElement('optgroup'); g.label = S.name + ' seats';
+    g.append(...ms.map(m => option(m.id, listName(m), m.id === currentId)));
+    return g;
+  }).filter(Boolean).concat(otherLineGroups(currentId, list));
+}
+// Mix and match: the same kind of seat from the other product lines, one heading per line.
+function otherLineGroups(currentId, shown) {
+  const cur = modelById(currentId), set = settingOf(cur);
+  return LINES.filter(L => L.id !== state.line).map(L => {
+    const ms = MODELS.filter(m => m.type === 'seat' && m.line === L.id && settingOf(m) === set && !shown.some(x => x.id === m.id)).sort(byPart);
+    if (!ms.length) return null;
+    const g = document.createElement('optgroup'); g.label = `${L.name} \u00b7 ${settingById(set).name} seats (mix and match)`;
     g.append(...ms.map(m => option(m.id, listName(m), m.id === currentId)));
     return g;
   }).filter(Boolean);
@@ -2937,11 +3009,10 @@ function refreshControls() {
   fillAddMenu();
 
   refreshStart();
-  // Fabric tab: the top pattern of every table that has pattern tops
+  // Start tab, under the table size: the top pattern of every table that has pattern tops
   const topTables = tables.filter(p => modelById(p.id).tops), topModel = topTables.length ? modelById(topTables[0].id) : null;
   const topAll = document.getElementById('topAll');
   document.getElementById('topAllRow').hidden = !topModel;
-  document.getElementById('topWrap').hidden = !topModel;
   if (topModel) {
     const cur = topTables.map(p => topOf(modelById(p.id), p.top).id), same = cur.every(t => t === cur[0]);
     topAll.replaceChildren(...(same ? [] : [option('', 'Mixed', true)]), ...topModel.tops.map(t => option(t.id, t.name, same && t.id === cur[0])));
@@ -3065,16 +3136,21 @@ function toggleAddPicker(open) {
   pk.hidden = !on;
   btn.setAttribute('aria-expanded', on);
   btn.textContent = on ? 'Close' : '+ Add a piece';
-  if (on) { addSetting = addSetting || state.setting; fillAddMenu(); requestAnimationFrame(() => pk.scrollIntoView({ block: 'nearest', behavior: 'smooth' })); }
+  if (on) { addSetting = addSetting || state.setting; addLine = state.line; fillAddMenu(); requestAnimationFrame(() => pk.scrollIntoView({ block: 'nearest', behavior: 'smooth' })); }
 }
 function fillAddMenu() {
   if (document.getElementById('addPicker').hidden) return;
   const set = addSetting || state.setting;
   document.querySelectorAll('#addTabs button').forEach(b => b.classList.toggle('selected', b.dataset.set === set));
   const add = id => { toggleAddPicker(false); addPiece(id); };
-  const seats = seatModels().filter(m => settingOf(m) === set);
-  document.getElementById('addSeatCards').replaceChildren(...seats.map(m => pickCard(m, { title: partOf(m), sub: shortName(m), onPick: () => add(m.id) })),
-    ...(seats.length ? [] : [emptyNote('No seats of this kind in this line.')]));
+  // Seats from the line picked in the picker's own menu (any line, so a set can mix lines); the group's line stays as it is
+  const lineId = LINES.some(L => L.id === addLine) ? addLine : state.line, other = lineId !== state.line;
+  const lineSel = document.getElementById('addLine');
+  lineSel.replaceChildren(...LINES.map(L => option(L.id, L.id === state.line ? L.name : `${L.name} (mix and match)`, L.id === lineId)));
+  const seats = MODELS.filter(m => m.type === 'seat' && (m.line === lineId || (!m.line && !other)) && settingOf(m) === set).sort(byPart);
+  document.getElementById('addSeatCards').replaceChildren(...seats.map(m => pickCard(m, { title: partOf(m),
+    sub: other ? `${lineById(lineId).name} \u00b7 ${shortName(m)}` : shortName(m), onPick: () => add(m.id) })),
+    ...(seats.length ? [] : [emptyNote(`No ${settingById(set).name.toLowerCase()} seats in the ${lineById(lineId).name} line yet.`)]));
   const fams = settingFamilies(set);
   document.getElementById('addTableCards').replaceChildren(...fams.map(f => {
     const id = familySizes(f)[0][0];
@@ -3623,10 +3699,13 @@ const QUOTE_REF = (() => {
   return `Q-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 })();
 const FORM_FIELDS = ['qName', 'qCompany', 'qEmail', 'qPhone', 'qLocation', 'qNotes'];
+// The color and finish disclaimer (the note under the panel), repeated on the Quote tab and the PDF.
+const disclaimerText = () => (document.getElementById('colorNote') || {}).textContent || '';
 const isQuoteOpen = () => !document.getElementById('pane-quote').hidden;
 
 function setupQuote() {
   document.getElementById('quoteRef').textContent = QUOTE_REF;
+  document.getElementById('quoteNote').textContent = disclaimerText();
   const hint = document.getElementById('quoteHint');
   hint.append('Opens your email app addressed to ');
   const b = document.createElement('b'); b.textContent = QUOTE_EMAIL; hint.append(b);
@@ -3825,6 +3904,7 @@ async function printPDF() {
           ${person || cu.qNotes ? `<p class="ps-h" style="margin-top:14px">Prepared for</p><div class="ps-kv">${person}</div>${cu.qNotes ? `<div class="ps-notes">${esc(cu.qNotes)}</div>` : ''}` : ''}
         </div>
       </div>
+      <p class="ps-note">${esc(disclaimerText())}</p>
       <div class="ps-foot">
         <div>Request a quote: <b>${esc(QUOTE_EMAIL)}</b> · reference ${esc(QUOTE_REF)}</div>
         ${link ? `<div class="ps-link">${esc(link)}</div>` : ''}
@@ -3861,11 +3941,12 @@ function selectFrame(i) {
   if (frameTextures.has(i)) return apply(frameTextures.get(i));
 
   new THREE.TextureLoader().load(
-    c.texture,
+    c.texture + '?v=' + encodeURIComponent(ASSET_VERSION),   // the tag makes browsers fetch an updated finish image
     texture => {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(FRAME_TEXTURE_REPEAT, FRAME_TEXTURE_REPEAT);
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();   // the fine grain stays crisp at glancing angles
       frameTextures.set(i, texture);
       apply(texture);
     },
