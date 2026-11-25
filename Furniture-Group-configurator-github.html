@@ -101,6 +101,8 @@
   .tabs { position: relative; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: rgba(0, 0, 0, .28); border: 1px solid var(--line); margin-bottom: 14px; }
   .tab { position: relative; z-index: 1; flex: 1; padding: 8px 4px; font-size: 12.5px; font-weight: 700; color: var(--muted); border-radius: 10px; transition: color .25s; white-space: nowrap; }
   .tab i { font-style: normal; font-size: 9.5px; letter-spacing: .08em; color: var(--faint); margin-right: 5px; transition: color .25s; }
+  .tabs.many .tab { flex: auto; padding: 8px 2px; font-size: 11.5px; }   /* seven tabs (with Top): fit them all */
+  .tabs.many .tab i { font-size: 8.5px; margin-right: 3px; }
   .tab:hover { color: var(--ink); }
   .tab.selected { color: #0a2733; }
   .tab.selected i { color: rgba(10, 39, 51, .55); }
@@ -433,6 +435,19 @@
   .link-row .reset-layout { flex: none; }
   .link-btn { display: block; margin: 10px 0 0; padding: 0; font-size: 12px; font-weight: 700; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
   .pick-empty { grid-column: 1 / -1; margin: 0; }
+  .top-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 4px; }
+  .top-card { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--glass-2); transition: .25s; position: relative; padding: 8px 6px 0; }
+  .top-card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+  .top-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 10px 26px rgba(63, 179, 218, .25); }
+  .top-card.selected::after { content: '✓'; position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--grad); color: #0a2733; font-size: 12px; font-weight: 800; display: grid; place-items: center; }
+  .top-card .pic { width: 100%; aspect-ratio: 1 / 1; display: grid; place-items: center; }
+  .top-card .pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .top-card .pic i { width: 78%; aspect-ratio: 1 / 1; border-radius: 50%; border: 2px dashed var(--line-strong); opacity: .5; animation: pulseDot 1.4s ease-in-out infinite; }
+  .top-card.long .pic i { aspect-ratio: 2 / 1; border-radius: 999px; }
+  @keyframes pulseDot { 50% { opacity: .2; } }
+  .top-card span { display: block; text-align: center; font-size: 11px; padding: 6px 4px 7px; color: var(--muted); }
+  .top-card.selected span { color: var(--ink); font-weight: 700; }
   .pick-line { grid-column: 1 / -1; margin: 10px 0 0; font-size: 9.5px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); }
   .pick-line:first-child { margin-top: 0; }
   #addPicker { margin-top: 10px; padding: 10px; border-radius: 14px; border: 1px solid var(--line); background: rgba(0, 0, 0, .18); }
@@ -508,6 +523,7 @@
       <button class="tab" role="tab" id="tab-layout" aria-controls="pane-layout" aria-selected="false" tabindex="-1"><i>02</i>Plan</button>
       <button class="tab" role="tab" id="tab-frame" aria-controls="pane-frame" aria-selected="false" tabindex="-1"><i>03</i>Frame</button>
       <button class="tab" role="tab" id="tab-fabric" aria-controls="pane-fabric" aria-selected="false" tabindex="-1"><i>04</i>Fabric</button>
+      <button class="tab" role="tab" id="tab-top" aria-controls="pane-top" aria-selected="false" tabindex="-1" hidden><i>05</i>Top</button>
       <button class="tab" role="tab" id="tab-extras" aria-controls="pane-extras" aria-selected="false" tabindex="-1"><i>05</i>Extras</button>
       <button class="tab" role="tab" id="tab-quote" aria-controls="pane-quote" aria-selected="false" tabindex="-1"><i>06</i>Quote</button>
     </div>
@@ -576,8 +592,14 @@
       <div role="tabpanel" id="pane-fabric" aria-labelledby="tab-fabric" hidden>
         <p class="hint" id="fabricNote" style="margin:0 0 8px">One fabric for every seat in the group.</p>
         <div class="fabric-grid" id="fabrics"></div>
+      </div>
+      <div role="tabpanel" id="pane-top" aria-labelledby="tab-top" hidden>
+        <div id="topCardsWrap" hidden>
+          <p class="hint" style="margin:0 0 8px">Choose the pattern CNC cut through the aluminum top. It applies to every table with a punch top.</p>
+          <div class="top-grid" id="tops"></div>
+        </div>
         <div id="woodWrap" hidden>
-          <div class="section-label" style="margin-top:18px">Wood inset table top</div>
+          <div class="section-label" style="margin-top:4px">Wood inset table top</div>
           <p class="hint" style="margin:0 0 12px">The PolyLumber color for the Eco Wood tables.</p>
           <div class="wood-tabs" role="group" aria-label="PolyLumber color range"></div>
           <div class="swatches wood-grid"></div>
@@ -2760,6 +2782,7 @@ function setupTabs() {
     });
     moveInk(tab);
     if (tab.id === 'tab-quote') refreshQuote();
+    if (tab.id === 'tab-top') drawTopPictures();
     if (tab.id === 'tab-extras') refreshExtras();
   };
   tabs.forEach((tab, i) => {
@@ -2901,6 +2924,93 @@ function refreshStart() {
   document.getElementById('showAll').textContent = showAllPicks ? `Show only ${settingById(set).name.toLowerCase()} pieces` : 'Show all seats, tables and patterns, including other product lines';
 }
 
+/* ---------- Top tab: punch top patterns as picture cards, and the wood inset color ---------- */
+// One card per pattern, with a top-down picture drawn from the pattern's own GLB (as on the Product configurator).
+// A pick applies to every table with a punch top. The tab shows only when a table in the group has a choice of top.
+let topCardsFor = null;          // the model the cards were built for
+function refreshTopTab(topModel, topTables) {
+  const grid = document.getElementById('tops');
+  document.getElementById('topCardsWrap').hidden = !topModel;
+  if (!topModel) { grid.replaceChildren(); topCardsFor = null; }
+  else {
+    if (topCardsFor !== topModel.id) {
+      topCardsFor = topModel.id;
+      const fp = fpOf(topModel.id), long = /x/.test(topModel.id) || Math.abs(fp.w - fp.d) > 0.1 * Math.max(fp.w, fp.d);
+      grid.replaceChildren(...topModel.tops.map(t => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'top-card' + (long ? ' long' : '');
+        b.dataset.top = t.id;
+        b.setAttribute('aria-label', `Top pattern: ${t.name}`);
+        b.innerHTML = '<div class="pic"><i></i></div><span></span>';
+        b.querySelector('span').textContent = t.name;
+        b.addEventListener('click', () => setTops(tablePieces(), t.id));
+        return b;
+      }));
+    }
+    const cur = topTables.map(p => topOf(modelById(p.id), p.top).id), one = cur.every(x => x === cur[0]) ? cur[0] : null;
+    grid.querySelectorAll('.top-card').forEach(b => { const on = b.dataset.top === one; b.classList.toggle('selected', on); b.setAttribute('aria-pressed', on); });
+    drawTopPictures();
+  }
+  const tab = document.getElementById('tab-top'), hide = !topModel && !insetOn();
+  const bar = document.querySelector('.tabs'), many = [...document.querySelectorAll('.tabs .tab')].filter(t => t !== tab && !t.hidden).length + (hide ? 0 : 1) >= 7;
+  if (bar.classList.contains('many') !== many) { bar.classList.toggle('many', many); requestAnimationFrame(() => dispatchEvent(new Event('resize'))); }   // re-place the tab underline
+  if (tab.hidden !== hide) {
+    tab.hidden = hide;
+    [...document.querySelectorAll('.tabs .tab')].filter(t => !t.hidden).forEach((t, i) => { t.querySelector('i').textContent = String(i + 1).padStart(2, '0'); });
+    if (hide && tab.classList.contains('selected')) showTab([...document.querySelectorAll('.tabs .tab')].find(t => !t.hidden));
+    if (typeof refreshRail === 'function') refreshRail();
+  }
+}
+// Pictures are drawn only once the Top tab is open (each loads its top's file, which then also swaps in instantly).
+function drawTopPictures() {
+  if (document.getElementById('pane-top').hidden) return;
+  const m = modelById(topCardsFor);
+  if (!m || !m.tops) return;
+  document.querySelectorAll('#tops .top-card').forEach(b => {
+    const t = m.tops.find(x => x.id === b.dataset.top), pic = b.querySelector('.pic');
+    if (!t || pic.querySelector('img')) return;
+    topThumb(t).then(url => { if (url && b.isConnected) { const img = new Image(); img.alt = ''; img.src = url; pic.replaceChildren(img); } })
+      .catch(() => { const i = pic.querySelector('i'); if (i) i.style.animation = 'none'; });
+  });
+}
+const topThumbs = new Map();   // file -> Promise of a data URL
+const topThumbUrl = new Map(); // file -> data URL, once drawn
+function topThumb(t) {
+  if (!topThumbs.has(t.file)) {
+    topThumbs.set(t.file, loadGLB(t.file).then(gltf => {
+      const SZ = 256, sc = new THREE.Scene(), obj = gltf.scene.clone(true);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xdfe2e7, roughness: 0.6, metalness: 0 });
+      obj.traverse(o => { if (o.isMesh) o.material = mat; });
+      sc.add(obj);
+      sc.add(new THREE.HemisphereLight(0xffffff, 0x777777, 2.2));
+      const dl = new THREE.DirectionalLight(0xffffff, 1.4); dl.position.set(-1, 3, 1.5); sc.add(dl);
+      obj.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(obj, true), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+      const h = Math.max(size.x, size.z) / 2 * 1.04;
+      const cam = new THREE.OrthographicCamera(-h, h, h, -h, 0.001, 100);
+      cam.position.set(c.x, box.max.y + 1, c.z); cam.up.set(0, 0, -1); cam.lookAt(c.x, box.min.y, c.z);
+      const rt = new THREE.WebGLRenderTarget(SZ, SZ, { samples: 4, colorSpace: THREE.SRGBColorSpace });
+      const prevRT = renderer.getRenderTarget(), prevClear = renderer.getClearAlpha(), prevColor = renderer.getClearColor(new THREE.Color());
+      renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(sc, cam);
+      const px = new Uint8Array(SZ * SZ * 4);
+      renderer.readRenderTargetPixels(rt, 0, 0, SZ, SZ, px);
+      renderer.setRenderTarget(prevRT); renderer.setClearColor(prevColor, prevClear);
+      rt.dispose(); mat.dispose();
+      const cv = document.createElement('canvas'); cv.width = cv.height = SZ;
+      const ctx = cv.getContext('2d'), img = ctx.createImageData(SZ, SZ);
+      for (let y = 0; y < SZ; y++) img.data.set(px.subarray((SZ - 1 - y) * SZ * 4, (SZ - y) * SZ * 4), y * SZ * 4);   // rows come bottom-up
+      ctx.putImageData(img, 0, 0);
+      const url = cv.toDataURL('image/png');
+      topThumbUrl.set(t.file, url);
+      return url;
+    }));
+    topThumbs.get(t.file).catch(() => topThumbs.delete(t.file));
+  }
+  return topThumbs.get(t.file);
+}
+
+
 /* ---------- Extras tab: samples and table options ---------- */
 function refreshExtras() {
   refreshSamples();
@@ -3017,6 +3127,7 @@ function refreshControls() {
     const cur = topTables.map(p => topOf(modelById(p.id), p.top).id), same = cur.every(t => t === cur[0]);
     topAll.replaceChildren(...(same ? [] : [option('', 'Mixed', true)]), ...topModel.tops.map(t => option(t.id, t.name, same && t.id === cur[0])));
   }
+  refreshTopTab(topModel, topTables);
 
   const list = document.getElementById('pieceList');
   let si = 0, ti = 0;
