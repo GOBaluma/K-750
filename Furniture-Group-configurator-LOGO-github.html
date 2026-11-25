@@ -560,7 +560,6 @@
         <div class="section-label" id="tableCardsLabel">Table</div>
         <div class="pick-grid" id="tableCards"></div>
         <label class="field" id="sizeAllRow" hidden style="margin-top:10px">Table size <select id="sizeAll"></select></label>
-        <label class="field" id="topAllRow" hidden style="margin-top:10px">Table top pattern <select id="topAll"></select></label>
         <div class="link-row"><button class="link-btn" id="showAll" type="button"></button><button class="link-btn reset-layout" type="button">Reset layout</button></div>
         <p class="hint" id="layoutHint"></p>
       </div>
@@ -2920,7 +2919,6 @@ function buildUI() {
 
   // Start: one size for every table of the chosen family
   document.getElementById('sizeAll').addEventListener('change', e => setModels(tablePieces(), e.target.value));
-  document.getElementById('topAll').addEventListener('change', e => setTops(tablePieces(), e.target.value));
 
   // Frame finishes
   const colorsEl = document.getElementById('colors');
@@ -3329,14 +3327,8 @@ function refreshControls() {
   fillAddMenu();
 
   refreshStart();
-  // Start tab, under the table size: the top pattern of every table that has pattern tops
+  // Top tab: the top pattern of every table that has pattern tops
   const topTables = tables.filter(p => modelById(p.id).tops), topModel = topTables.length ? modelById(topTables[0].id) : null;
-  const topAll = document.getElementById('topAll');
-  document.getElementById('topAllRow').hidden = !topModel;
-  if (topModel) {
-    const cur = topTables.map(p => topOf(modelById(p.id), p.top).id), same = cur.every(t => t === cur[0]);
-    topAll.replaceChildren(...(same ? [] : [option('', 'Mixed', true)]), ...topModel.tops.map(t => option(t.id, t.name, same && t.id === cur[0])));
-  }
   refreshTopTab(topModel, topTables);
 
   const list = document.getElementById('pieceList');
